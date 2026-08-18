@@ -88,7 +88,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);
-        Route::resource('purchases', PurchaseController::class)->except(['edit', 'update', 'destroy']);
+        Route::resource('purchases', PurchaseController::class)->except(['destroy']);
         Route::resource('expenses', ExpenseController::class);
         Route::resource('payments', PaymentController::class);
         Route::resource('users', UserController::class)->except(['show', 'destroy']);
