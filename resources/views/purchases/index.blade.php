@@ -15,6 +15,7 @@
                         <th>Supplier</th>
                         <th>Date</th>
                         <th>Total</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,9 +25,12 @@
                             <td>{{ $purchase->supplier?->name }}</td>
                             <td>{{ $purchase->purchase_date->format('d M Y') }}</td>
                             <td>{{ money($purchase->total) }}</td>
+                            <td>
+                                <a class="btn btn-ghost" href="{{ route('purchases.edit', $purchase) }}">Edit</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="empty">No purchases yet.</td></tr>
+                        <tr><td colspan="5" class="empty">No purchases yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

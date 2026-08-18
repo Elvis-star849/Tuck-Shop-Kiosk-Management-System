@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\InsufficientStockException;
+use App\Models\AuditLog;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\Supplier;
 use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +36,147 @@ class PurchaseController extends Controller
 
     public function store(Request $request, InventoryService $inventory): RedirectResponse
     {
+        $data = $this->validatedPurchase($request);
+
+        try {
+            $purchase = DB::transaction(function () use ($data, $request, $inventory) {
+                $supplier = $this->resolveSupplier($data['supplier_id'] ?? null, $data['supplier_name'] ?? null);
+
+                $total = 0;
+                $purchase = Purchase::query()->create([
+                    'purchase_number' => Purchase::nextNumber(),
+                    'supplier_id' => $supplier->id,
+                    'user_id' => $request->user()->id,
+                    'purchase_date' => $data['purchase_date'],
+                    'reference' => $data['reference'] ?? null,
+                    'total' => 0,
+                    'notes' => $data['notes'] ?? null,
+                ]);
+
+                foreach ($data['items'] as $row) {
+                    $line = $this->buildLine($row, $supplier->id);
+                    $total += $line['line_total'];
+
+                    $purchase->items()->create([
+                        'product_id' => $line['product']->id,
+                        'quantity' => $line['qty'],
+                        'cost_price' => $line['cost'],
+                        'line_total' => $line['line_total'],
+                    ]);
+
+                    $line['product']->update(['cost_price' => $line['cost'], 'supplier_id' => $purchase->supplier_id]);
+
+                    $inventory->apply(
+                        $line['product'],
+                        'stock_in',
+                        $line['qty'],
+                        'Supplier Purchase',
+                        $purchase->purchase_number.($purchase->reference ? ' / '.$purchase->reference : ''),
+                        Purchase::class,
+                        $purchase->id,
+                    );
+                }
+
+                $purchase->update(['total' => $total]);
+
+                return $purchase;
+            });
+        } catch (InsufficientStockException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase recorded and stock increased.');
+    }
+
+    public function show(Purchase $purchase): View
+    {
+        $purchase->load(['supplier', 'items.product', 'user']);
+
+        return view('purchases.show', compact('purchase'));
+    }
+
+    public function edit(Purchase $purchase): View
+    {
+        $purchase->load(['supplier', 'items.product']);
+
+        $products = Product::query()
+            ->where(function ($query) use ($purchase) {
+                $query->where('status', 'active')
+                    ->orWhereIn('id', $purchase->items->pluck('product_id'));
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku', 'cost_price', 'selling_price']);
+
+        return view('purchases.edit', [
+            'purchase' => $purchase,
+            'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'products' => $products,
+            'suggestedSku' => Product::nextSku(),
+            'itemDefaults' => $purchase->items->map(fn (PurchaseItem $item) => [
+                'product_id' => $item->product_id,
+                'product_name' => $item->product?->name,
+                'quantity' => (float) $item->quantity,
+                'cost_price' => (float) $item->cost_price,
+            ])->values()->all(),
+        ]);
+    }
+
+    public function update(Request $request, Purchase $purchase, InventoryService $inventory): RedirectResponse
+    {
+        $data = $this->validatedPurchase($request);
+
+        try {
+            DB::transaction(function () use ($data, $purchase, $inventory) {
+                $purchase->load('items');
+                $oldItems = $purchase->items;
+                $supplier = $this->resolveSupplier($data['supplier_id'] ?? null, $data['supplier_name'] ?? null);
+
+                $newLines = [];
+                foreach ($data['items'] as $row) {
+                    $newLines[] = $this->buildLine($row, $supplier->id);
+                }
+
+                $this->syncPurchaseStock($oldItems, $newLines, $inventory, $purchase);
+
+                $purchase->items()->delete();
+                $total = 0;
+                foreach ($newLines as $line) {
+                    $total += $line['line_total'];
+                    $purchase->items()->create([
+                        'product_id' => $line['product']->id,
+                        'quantity' => $line['qty'],
+                        'cost_price' => $line['cost'],
+                        'line_total' => $line['line_total'],
+                    ]);
+                    $line['product']->update(['cost_price' => $line['cost'], 'supplier_id' => $supplier->id]);
+                }
+
+                $purchase->update([
+                    'supplier_id' => $supplier->id,
+                    'purchase_date' => $data['purchase_date'],
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'total' => $total,
+                ]);
+            });
+        } catch (InsufficientStockException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        AuditLog::record(
+            'purchase.updated',
+            $request->user()->name.' updated '.$purchase->purchase_number,
+            $purchase,
+        );
+
+        return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase updated and stock adjusted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedPurchase(Request $request): array
+    {
         $data = $request->validate([
             'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'supplier_name' => ['required_without:supplier_id', 'nullable', 'string', 'max:160'],
@@ -50,60 +194,76 @@ class PurchaseController extends Controller
 
         $this->assertNewProductFields($data['items']);
 
-        $purchase = DB::transaction(function () use ($data, $request, $inventory) {
-            $supplier = $this->resolveSupplier($data['supplier_id'] ?? null, $data['supplier_name'] ?? null);
+        return $data;
+    }
 
-            $total = 0;
-            $purchase = Purchase::query()->create([
-                'purchase_number' => Purchase::nextNumber(),
-                'supplier_id' => $supplier->id,
-                'user_id' => $request->user()->id,
-                'purchase_date' => $data['purchase_date'],
-                'reference' => $data['reference'] ?? null,
-                'total' => 0,
-                'notes' => $data['notes'] ?? null,
-            ]);
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array{product: Product, qty: float, cost: float, line_total: float}
+     */
+    private function buildLine(array $row, int $supplierId): array
+    {
+        $qty = (float) $row['quantity'];
+        $cost = (float) $row['cost_price'];
 
-            foreach ($data['items'] as $row) {
-                $qty = (float) $row['quantity'];
-                $cost = (float) $row['cost_price'];
-                $line = round($qty * $cost, 2);
-                $total += $line;
-                $product = $this->resolveProduct($row, $supplier->id);
+        return [
+            'product' => $this->resolveProduct($row, $supplierId),
+            'qty' => $qty,
+            'cost' => $cost,
+            'line_total' => round($qty * $cost, 2),
+        ];
+    }
 
-                $purchase->items()->create([
-                    'product_id' => $product->id,
-                    'quantity' => $qty,
-                    'cost_price' => $cost,
-                    'line_total' => $line,
-                ]);
+    /**
+     * @param  \Illuminate\Support\Collection<int, PurchaseItem>  $oldItems
+     * @param  array<int, array{product: Product, qty: float, cost: float, line_total: float}>  $newLines
+     */
+    private function syncPurchaseStock($oldItems, array $newLines, InventoryService $inventory, Purchase $purchase): void
+    {
+        $oldByProduct = [];
+        foreach ($oldItems as $item) {
+            $id = (int) $item->product_id;
+            $oldByProduct[$id] = ($oldByProduct[$id] ?? 0) + (float) $item->quantity;
+        }
 
-                $product->update(['cost_price' => $cost, 'supplier_id' => $purchase->supplier_id]);
+        $newByProduct = [];
+        foreach ($newLines as $line) {
+            $id = (int) $line['product']->id;
+            $newByProduct[$id] = ($newByProduct[$id] ?? 0) + $line['qty'];
+        }
 
+        $note = $purchase->purchase_number.' edited';
+        $ids = array_unique([...array_keys($oldByProduct), ...array_keys($newByProduct)]);
+
+        foreach ($ids as $id) {
+            $diff = round(($newByProduct[$id] ?? 0) - ($oldByProduct[$id] ?? 0), 2);
+            if ($diff == 0.0) {
+                continue;
+            }
+
+            $product = Product::query()->findOrFail($id);
+            if ($diff > 0) {
                 $inventory->apply(
                     $product,
                     'stock_in',
-                    $qty,
-                    'Supplier Purchase',
-                    $purchase->purchase_number.($purchase->reference ? ' / '.$purchase->reference : ''),
+                    $diff,
+                    'Purchase edited',
+                    $note,
+                    Purchase::class,
+                    $purchase->id,
+                );
+            } else {
+                $inventory->apply(
+                    $product,
+                    'adjustment',
+                    abs($diff),
+                    'Purchase edited',
+                    $note,
                     Purchase::class,
                     $purchase->id,
                 );
             }
-
-            $purchase->update(['total' => $total]);
-
-            return $purchase;
-        });
-
-        return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase recorded and stock increased.');
-    }
-
-    public function show(Purchase $purchase): View
-    {
-        $purchase->load(['supplier', 'items.product', 'user']);
-
-        return view('purchases.show', compact('purchase'));
+        }
     }
 
     /**

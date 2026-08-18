@@ -2,6 +2,10 @@
     <x-slot name="header">{{ $purchase->purchase_number }}</x-slot>
     <x-slot name="subtitle">{{ $purchase->supplier?->name }} · {{ $purchase->purchase_date->format('d M Y') }}</x-slot>
     <x-slot name="title">Purchase</x-slot>
+    <x-slot name="actions">
+        <a class="btn btn-primary" href="{{ route('purchases.edit', $purchase) }}">Edit purchase</a>
+        <a class="btn btn-ghost" href="{{ route('purchases.index') }}">All purchases</a>
+    </x-slot>
 
     <div class="card">
         <div class="card-pad muted">
