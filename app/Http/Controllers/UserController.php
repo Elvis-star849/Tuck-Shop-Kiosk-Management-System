@@ -33,6 +33,7 @@ class UserController extends Controller
         ]);
 
         $user = User::query()->create([
+            'shop_id' => $request->user()->shop_id,
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
@@ -45,13 +46,17 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'User created.');
     }
 
-    public function edit(User $user): View
+    public function edit(Request $request, User $user): View
     {
+        abort_unless((int) $user->shop_id === (int) $request->user()->shop_id, 403);
+
         return view('users.edit', compact('user'));
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        abort_unless((int) $user->shop_id === (int) $request->user()->shop_id, 403);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'unique:users,email,'.$user->id],

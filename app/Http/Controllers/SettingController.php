@@ -46,6 +46,12 @@ class SettingController extends Controller
             config(['company.'.$key => $value]);
         }
 
+        $request->user()->shop?->update([
+            'name' => $data['name'],
+            'phone' => $data['phone'] ?? null,
+            'address' => $data['address'] ?? null,
+        ]);
+
         AuditLog::record('settings.updated', 'Admin updated business and receipt settings');
 
         return back()->with('success', 'Settings saved.');

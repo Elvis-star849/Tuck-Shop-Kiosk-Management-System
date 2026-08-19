@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockMovement extends Model
 {
+    use BelongsToShop;
     public const TYPES = [
         'stock_in' => 'Stock In',
         'sale' => 'Sale',
@@ -28,6 +30,7 @@ class StockMovement extends Model
     ];
 
     protected $fillable = [
+        'shop_id',
         'product_id',
         'type',
         'quantity',

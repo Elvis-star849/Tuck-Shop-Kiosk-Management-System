@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Purchase extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
+        'shop_id',
         'purchase_number',
         'supplier_id',
         'user_id',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -10,7 +11,10 @@ use Illuminate\Support\Facades\Request;
 
 class AuditLog extends Model
 {
+    use BelongsToShop;
+
     protected $fillable = [
+        'shop_id',
         'auditable_type',
         'auditable_id',
         'field',

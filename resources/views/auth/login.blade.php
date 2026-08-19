@@ -33,7 +33,7 @@
         </div>
 
         <p style="margin-top:10px;font-size:13px;text-align:center;">
-            <a href="{{ route('register') }}" style="color:var(--purple);">Create an account</a>
+            <a href="{{ route('register') }}" style="color:var(--purple);">Register your shop</a>
         </p>
     </form>
 </x-guest-layout>

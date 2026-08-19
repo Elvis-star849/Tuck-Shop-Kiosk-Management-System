@@ -18,7 +18,7 @@
             <button type="button" class="menu-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle menu">
                 <span class="material-symbols-outlined">menu</span>
             </button>
-            <a class="brand" href="{{ route('dashboard') }}">Chindeka Shop</a>
+            <a class="brand" href="{{ route('dashboard') }}">{{ auth()->user()->shop?->name ?: config('company.name', 'Chindeka Shop') }}</a>
         </div>
         <div class="topbar-right">
             <a class="top-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.index') }}">POS</a>
