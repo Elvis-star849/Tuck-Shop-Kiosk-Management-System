@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
+    use BelongsToShop;
+
     public const STATUSES = [
         'draft',
         'sent',
@@ -18,6 +21,7 @@ class Invoice extends Model
     ];
 
     protected $fillable = [
+        'shop_id',
         'invoice_number',
         'customer_id',
         'user_id',

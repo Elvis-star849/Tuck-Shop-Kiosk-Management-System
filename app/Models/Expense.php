@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
+    use BelongsToShop;
     public const CATEGORIES = [
         'Transport',
         'Electricity',
@@ -16,6 +18,7 @@ class Expense extends Model
     ];
 
     protected $fillable = [
+        'shop_id',
         'expense_date',
         'category',
         'description',

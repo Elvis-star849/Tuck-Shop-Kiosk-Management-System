@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">{{ $user->exists ? 'Edit user' : 'New user' }}</x-slot>
-    <x-slot name="subtitle">Admin sees everything. Cashier uses POS and stock views.</x-slot>
+    <x-slot name="subtitle">Admin sees everything in this shop. Cashier uses POS and stock views.</x-slot>
     <x-slot name="title">{{ $user->exists ? 'Edit user' : 'New user' }}</x-slot>
 
     <form method="POST" action="{{ $user->exists ? route('users.update', $user) : route('users.store') }}" class="card card-pad" style="max-width:720px;">

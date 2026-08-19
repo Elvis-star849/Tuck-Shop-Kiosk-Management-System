@@ -844,6 +844,12 @@ label.field-label {
     padding: 28px;
 }
 
+.auth-card-wide {
+    width: min(560px, calc(100% - 32px));
+    margin-top: 32px;
+    margin-bottom: 32px;
+}
+
 .auth-card h1 {
     margin: 0 0 6px;
     font-size: 24px;

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use BelongsToShop;
     public const METHODS = [
         'ecocash' => 'EcoCash',
         'paynow' => 'Paynow',
@@ -17,6 +19,7 @@ class Payment extends Model
     ];
 
     protected $fillable = [
+        'shop_id',
         'invoice_id',
         'sale_id',
         'amount',

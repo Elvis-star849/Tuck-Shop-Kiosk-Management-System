@@ -16,7 +16,7 @@
         <div class="auth-top">
             <a class="brand" href="{{ url('/') }}">Chindeka Invoice</a>
         </div>
-        <div class="auth-card">
+        <div class="auth-card {{ request()->routeIs('register') ? 'auth-card-wide' : '' }}">
             {{ $slot }}
         </div>
     </div>

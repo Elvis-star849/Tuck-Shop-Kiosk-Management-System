@@ -3,7 +3,9 @@
 namespace Database\Factories;
 
 use App\Models\Product;
+use App\Models\Shop;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * @extends Factory<Product>
@@ -15,6 +17,9 @@ class ProductFactory extends Factory
         $price = fake()->randomFloat(2, 1, 20);
 
         return [
+            'shop_id' => Auth::hasUser() && Auth::user()->shop_id
+                ? Auth::user()->shop_id
+                : Shop::factory(),
             'sku' => strtoupper(fake()->unique()->bothify('SKU-####')),
             'name' => fake()->words(3, true),
             'description' => fake()->sentence(),

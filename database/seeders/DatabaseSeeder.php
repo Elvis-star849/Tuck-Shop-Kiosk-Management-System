@@ -10,6 +10,8 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\Setting;
+use App\Models\Shop;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\InventoryService;
@@ -22,9 +24,19 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $shop = Shop::query()->updateOrCreate(
+            ['name' => 'Chindeka Tuck Shop'],
+            [
+                'phone' => config('company.phone'),
+                'address' => config('company.address'),
+                'status' => 'active',
+            ]
+        );
+
         $admin = User::query()->updateOrCreate(
             ['email' => 'admin@chindeka.test'],
             [
+                'shop_id' => $shop->id,
                 'name' => 'Tashinga Admin',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
@@ -35,6 +47,7 @@ class DatabaseSeeder extends Seeder
         User::query()->updateOrCreate(
             ['email' => 'cashier@chindeka.test'],
             [
+                'shop_id' => $shop->id,
                 'name' => 'Rudo Cashier',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
@@ -43,6 +56,10 @@ class DatabaseSeeder extends Seeder
         );
 
         Auth::login($admin);
+
+        Setting::put('company.name', $shop->name);
+        Setting::put('company.phone', $shop->phone);
+        Setting::put('company.address', $shop->address);
 
         $drinks = Category::query()->updateOrCreate(['name' => 'Drinks']);
         $food = Category::query()->updateOrCreate(['name' => 'Food']);

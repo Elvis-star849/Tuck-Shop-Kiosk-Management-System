@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToShop;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GatewayTransaction extends Model
 {
+    use BelongsToShop;
     public const STATUSES = ['pending', 'paid', 'cancelled', 'failed'];
 
     protected $fillable = [
+        'shop_id',
         'invoice_id',
         'sale_id',
         'payment_id',
