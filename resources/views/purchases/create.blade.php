@@ -1,19 +1,19 @@
 <x-app-layout>
     <x-slot name="header">New purchase</x-slot>
-    <x-slot name="subtitle">Type a name to pick an existing record, or keep typing to create a new one</x-slot>
+    <x-slot name="subtitle">Pick a supplier and product, or type a new name to create it</x-slot>
     <x-slot name="title">New purchase</x-slot>
 
     <form
         method="POST"
         action="{{ route('purchases.store') }}"
-        class="card card-pad"
+        class="card card-pad purchase-sheet"
         x-data="purchaseForm(
             @js($products),
             @js($suppliers),
+            @js($categories),
             @js(old('items', [])),
             @js(old('supplier_id')),
-            @js(old('supplier_name')),
-            @js($suggestedSku)
+            @js(old('supplier_name'))
         )"
     >
         @csrf

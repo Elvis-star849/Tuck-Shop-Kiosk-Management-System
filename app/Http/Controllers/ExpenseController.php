@@ -9,11 +9,17 @@ use Illuminate\View\View;
 
 class ExpenseController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $expenses = Expense::query()->with('user')->latest('expense_date')->paginate(15);
+        $date = $request->input('date');
+        $expenses = Expense::query()
+            ->with('user')
+            ->when($date, fn ($query) => $query->whereDate('expense_date', $date))
+            ->latest('expense_date')
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('expenses.index', compact('expenses'));
+        return view('expenses.index', compact('expenses', 'date'));
     }
 
     public function create(): View

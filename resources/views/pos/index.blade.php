@@ -46,7 +46,7 @@
                         <thead>
                             <tr>
                                 <th>Item</th>
-                                <th style="width:80px;">Qty</th>
+                                <th style="width:118px;">Qty</th>
                                 <th>Total</th>
                                 <th></th>
                             </tr>
@@ -59,7 +59,7 @@
                                         <input type="hidden" :name="`items[${index}][product_id]`" :value="item.product_id">
                                     </td>
                                     <td>
-                                        <input class="field" type="number" step="0.01" min="0.01" :max="item.stock" :name="`items[${index}][quantity]`" x-model.number="item.quantity" @change="clamp(item)">
+                                        <input class="field pos-qty-field" type="number" step="0.01" min="0.01" :max="item.stock" :name="`items[${index}][quantity]`" x-model.number="item.quantity" @change="clamp(item)">
                                     </td>
                                     <td x-text="money(item.quantity * item.price)"></td>
                                     <td><button type="button" class="btn btn-ghost" @click="remove(index)">×</button></td>

@@ -48,7 +48,7 @@
             <div class="totals-row"><span>Paid</span><span>{{ money($sale->amount_paid) }}</span></div>
             <div class="totals-row"><span>Change</span><span>{{ money($sale->change_due) }}</span></div>
             @if (auth()->user()->isAdmin())
-                <div class="totals-row"><span>Profit</span><span>{{ money($sale->profit()) }}</span></div>
+                <div class="totals-row"><span>{{ $sale->profit() < 0 ? 'Loss' : 'Profit' }}</span><span>{{ money_profit($sale->profit()) }}</span></div>
             @endif
             <p class="muted" style="margin-top:12px;">{{ $sale->isPendingPayment() ? 'Payment method' : 'Paid by' }} {{ \App\Models\Payment::METHODS[$sale->payment_method] ?? $sale->payment_method }}</p>
             <p style="margin-top:8px;"><x-status-badge :status="$sale->status" /></p>

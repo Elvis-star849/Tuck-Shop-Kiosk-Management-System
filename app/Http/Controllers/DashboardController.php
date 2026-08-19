@@ -6,6 +6,7 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -26,14 +27,8 @@ class DashboardController extends Controller
 
         $todayRevenue = (float) (clone $todaySales)->sum('total');
         $todayCount = (clone $todaySales)->count();
-        $todayProfit = $admin
-            ? Sale::query()
-                ->whereBetween('sold_at', [$todayStart, $todayEnd])
-                ->counted()
-                ->with('items')
-                ->get()
-                ->sum(fn (Sale $sale) => $sale->profit())
-            : 0;
+        $todayPurchases = $admin ? (float) Purchase::query()->whereDate('purchase_date', today())->sum('total') : 0;
+        $todayProfit = $admin ? round($todayRevenue - $todayPurchases, 2) : 0;
         $todayExpenses = $admin ? (float) Expense::query()->whereDate('expense_date', today())->sum('amount') : 0;
 
         $lowStock = Product::query()->active()->whereColumn('quantity', '<=', 'min_stock')->where('quantity', '>', 0)->orderBy('quantity')->get();

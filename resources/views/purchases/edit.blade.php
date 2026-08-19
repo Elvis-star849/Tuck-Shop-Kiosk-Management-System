@@ -6,14 +6,14 @@
     <form
         method="POST"
         action="{{ route('purchases.update', $purchase) }}"
-        class="card card-pad"
+        class="card card-pad purchase-sheet"
         x-data="purchaseForm(
             @js($products),
             @js($suppliers),
+            @js($categories),
             @js(old('items', $itemDefaults)),
             @js(old('supplier_id', $purchase->supplier_id)),
-            @js(old('supplier_name', $purchase->supplier?->name)),
-            @js($suggestedSku)
+            @js(old('supplier_name', $purchase->supplier?->name))
         )"
     >
         @csrf

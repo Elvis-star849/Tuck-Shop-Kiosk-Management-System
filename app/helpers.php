@@ -9,6 +9,17 @@ if (! function_exists('money')) {
     }
 }
 
+if (! function_exists('money_profit')) {
+    function money_profit(float|int|string|null $amount): string
+    {
+        $amount = round((float) $amount, 2);
+        $symbol = config('company.currency_symbol', '$');
+        $formatted = $symbol.number_format(abs($amount), 2);
+
+        return $amount < 0 ? '-'.$formatted : $formatted;
+    }
+}
+
 if (! function_exists('invoice_status_label')) {
     function invoice_status_label(string $status): string
     {

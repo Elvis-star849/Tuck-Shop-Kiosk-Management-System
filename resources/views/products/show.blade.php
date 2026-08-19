@@ -1,11 +1,11 @@
 <x-app-layout>
     <x-slot name="header">{{ $product->name }}</x-slot>
-    <x-slot name="subtitle">{{ $product->sku }} · {{ $product->category?->name ?: 'Uncategorised' }}</x-slot>
+    <x-slot name="subtitle">{{ $product->category?->name ?: 'Uncategorised' }}</x-slot>
     <x-slot name="title">{{ $product->name }}</x-slot>
     <x-slot name="actions">
         @if (auth()->user()->isAdmin())
             <a class="btn btn-primary" href="{{ route('products.edit', $product) }}">Edit</a>
-            <a class="btn btn-ghost" href="{{ route('stock.in') }}">Stock in</a>
+            <a class="btn btn-ghost" href="{{ route('purchases.create') }}">New purchase</a>
             <a class="btn btn-ghost" href="{{ route('stock.adjust') }}">Adjust stock</a>
             <a class="btn btn-ghost" href="{{ route('stock.history', ['product_id' => $product->id]) }}">Full history</a>
         @endif
@@ -33,8 +33,8 @@
         </div>
         <div class="card stat-card magenta">
             <div>
-                <div class="stat-value">{{ money($product->profitPerUnit()) }}</div>
-                <div class="stat-label">Profit / unit</div>
+                <div class="stat-value">{{ money_profit($product->profitPerUnit()) }}</div>
+                <div class="stat-label">{{ $product->profitPerUnit() < 0 ? 'Loss / unit' : 'Profit / unit' }}</div>
             </div>
         </div>
         @endif

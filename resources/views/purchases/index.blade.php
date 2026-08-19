@@ -6,6 +6,19 @@
         <a class="btn btn-primary" href="{{ route('purchases.create') }}">New purchase</a>
     </x-slot>
 
+    <div class="stat-grid">
+        <div class="card stat-card">
+            <div>
+                <div class="stat-value">{{ money($grandTotal) }}</div>
+                <div class="stat-label">Grand total</div>
+                <div class="stat-change">{{ $purchases->total() }} {{ $purchases->total() === 1 ? 'purchase' : 'purchases' }}</div>
+            </div>
+            <div class="icon-circle bg-purple">
+                <span class="material-symbols-outlined">local_shipping</span>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="table-wrap">
             <table class="table">
@@ -35,6 +48,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-pad">{{ $purchases->links() }}</div>
+        <div class="card-pad">
+            <div class="totals-row grand"><span>Grand total</span><span>{{ money($grandTotal) }}</span></div>
+            {{ $purchases->links() }}
+        </div>
     </div>
 </x-app-layout>

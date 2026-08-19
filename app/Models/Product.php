@@ -151,6 +151,26 @@ class Product extends Model
         return round((float) $this->selling_price - (float) $this->cost_price, 2);
     }
 
+    public function onHandQty(): float
+    {
+        return max(0, (float) $this->quantity);
+    }
+
+    public function stockPurchaseTotal(): float
+    {
+        return round($this->onHandQty() * (float) $this->cost_price, 2);
+    }
+
+    public function stockSellingTotal(): float
+    {
+        return round($this->onHandQty() * (float) $this->selling_price, 2);
+    }
+
+    public function expectedStockProfit(): float
+    {
+        return round($this->stockSellingTotal() - $this->stockPurchaseTotal(), 2);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');

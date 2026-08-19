@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\User;
 use App\Services\InventoryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -15,15 +17,23 @@ class SaleController extends Controller
 {
     public function index(Request $request): View
     {
-        $sales = Sale::query()
-            ->with('user')
-            ->when(! $request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
-            ->when($request->status, fn ($query, $status) => $query->where('status', $status))
+        $date = $request->input('date');
+        $from = $request->input('from');
+        $to = $request->input('to');
+        $cashier = $this->resolvedCashier($request);
+
+        $sales = $this->filteredSalesQuery($request)
+            ->with(['user', 'items'])
             ->latest('sold_at')
             ->paginate(15)
             ->withQueryString();
 
-        return view('sales.index', compact('sales'));
+        $soldItems = collect();
+        if ($cashier) {
+            $soldItems = $this->soldItemsQuery($request, $cashier->id)->get();
+        }
+
+        return view('sales.index', compact('sales', 'date', 'from', 'to', 'cashier', 'soldItems'));
     }
 
     public function show(Request $request, Sale $sale): View
@@ -49,6 +59,34 @@ class SaleController extends Controller
         $pdf = Pdf::loadView('sales.pdf', compact('sale'))->setPaper('a5');
 
         return $pdf->download($sale->sale_number.'.pdf');
+    }
+
+    public function exportPdf(Request $request): Response
+    {
+        $cashier = $this->resolvedCashier($request);
+        $sales = $this->filteredSalesQuery($request)
+            ->counted()
+            ->with(['user', 'items'])
+            ->latest('sold_at')
+            ->get();
+
+        $soldItems = $cashier
+            ? $this->soldItemsQuery($request, $cashier->id)->get()
+            : $this->soldItemsQuery($request, null)->get();
+
+        $total = round((float) $sales->sum('total'), 2);
+        $from = $request->input('from');
+        $to = $request->input('to');
+        $date = $request->input('date');
+        $period = $from && $to
+            ? \Illuminate\Support\Carbon::parse($from)->format('d M Y').' – '.\Illuminate\Support\Carbon::parse($to)->format('d M Y')
+            : ($date ? \Illuminate\Support\Carbon::parse($date)->format('d M Y') : 'All dates');
+
+        $filename = 'sales-'.($cashier?->name ? \Illuminate\Support\Str::slug($cashier->name).'-' : '').now()->format('Ymd').'.pdf';
+        $pdf = Pdf::loadView('sales.export-pdf', compact('sales', 'soldItems', 'cashier', 'total', 'period'))
+            ->setPaper('a4');
+
+        return $pdf->download($filename);
     }
 
     public function requestCancel(Request $request, Sale $sale): RedirectResponse
@@ -146,6 +184,53 @@ class SaleController extends Controller
         );
 
         return redirect()->route('sales.index')->with('success', 'Unpaid sale voided and stock restored.');
+    }
+
+    private function resolvedCashier(Request $request): ?User
+    {
+        $cashierId = $request->user()->isAdmin()
+            ? ($request->integer('cashier_id') ?: null)
+            : $request->user()->id;
+
+        return $cashierId ? User::query()->find($cashierId) : null;
+    }
+
+    private function filteredSalesQuery(Request $request)
+    {
+        $cashier = $this->resolvedCashier($request);
+
+        return Sale::query()
+            ->when(! $request->user()->isAdmin(), fn ($query) => $query->where('user_id', $request->user()->id))
+            ->when($request->user()->isAdmin() && $cashier, fn ($query) => $query->where('user_id', $cashier->id))
+            ->when($request->status, fn ($query, $status) => $query->where('status', $status))
+            ->when($request->input('date'), fn ($query, $date) => $query->whereDate('sold_at', $date))
+            ->when($request->input('from'), fn ($query, $from) => $query->whereDate('sold_at', '>=', $from))
+            ->when($request->input('to'), fn ($query, $to) => $query->whereDate('sold_at', '<=', $to));
+    }
+
+    private function soldItemsQuery(Request $request, ?int $cashierId)
+    {
+        return SaleItem::query()
+            ->selectRaw('description, SUM(quantity) as qty, SUM(line_total) as revenue')
+            ->whereHas('sale', function ($query) use ($request, $cashierId) {
+                $query->counted();
+                if (! $request->user()->isAdmin()) {
+                    $query->where('user_id', $request->user()->id);
+                } elseif ($cashierId) {
+                    $query->where('user_id', $cashierId);
+                }
+                if ($request->input('date')) {
+                    $query->whereDate('sold_at', $request->input('date'));
+                }
+                if ($request->input('from')) {
+                    $query->whereDate('sold_at', '>=', $request->input('from'));
+                }
+                if ($request->input('to')) {
+                    $query->whereDate('sold_at', '<=', $request->input('to'));
+                }
+            })
+            ->groupBy('description')
+            ->orderByDesc('qty');
     }
 
     private function authorizeSale(Request $request, Sale $sale): void
