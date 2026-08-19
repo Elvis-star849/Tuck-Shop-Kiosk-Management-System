@@ -237,42 +237,44 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('purchaseForm', (products, suppliers, oldItems, oldSupplierId, oldSupplierName, suggestedSku) => {
+    Alpine.data('purchaseForm', (products, suppliers, categories, oldItems, oldSupplierId, oldSupplierName) => {
         const emptyItem = () => ({
             product_id: '',
             product_name: '',
-            sku: '',
-            selling_price: '',
+            category_id: '',
+            category_name: '',
             quantity: 1,
             cost_price: 0,
+            selling_price: 0,
             open: false,
             highlight: 0,
+            category_open: false,
+            category_highlight: 0,
         });
+
+        const hydrateItem = (item) => {
+            const product = products.find((entry) => String(entry.id) === String(item.product_id));
+            return {
+                ...emptyItem(),
+                product_id: item.product_id ? String(item.product_id) : '',
+                product_name: item.product_name || product?.name || '',
+                category_id: item.category_id ? String(item.category_id) : (product?.category_id ? String(product.category_id) : ''),
+                category_name: item.category_name || product?.category_name || '',
+                quantity: Number(item.quantity || 1),
+                cost_price: Number(item.cost_price || 0),
+                selling_price: Number(item.selling_price ?? product?.selling_price ?? 0),
+            };
+        };
 
         return {
         products,
         suppliers,
-        suggestedSku: suggestedSku || 'SKU-0001',
-        skuSeq: 0,
+        categories: categories || [],
         supplierId: oldSupplierId ? String(oldSupplierId) : '',
         supplierName: oldSupplierName || '',
         supplierOpen: false,
         supplierIndex: 0,
-        items: (oldItems && oldItems.length)
-            ? oldItems.map((item) => {
-                const product = products.find((entry) => String(entry.id) === String(item.product_id));
-                return {
-                    product_id: item.product_id ? String(item.product_id) : '',
-                    product_name: item.product_name || product?.name || '',
-                    sku: item.sku || '',
-                    selling_price: item.selling_price === undefined || item.selling_price === '' ? '' : Number(item.selling_price),
-                    quantity: Number(item.quantity || 1),
-                    cost_price: Number(item.cost_price || 0),
-                    open: false,
-                    highlight: 0,
-                };
-            })
-            : [emptyItem()],
+        items: (oldItems && oldItems.length) ? oldItems.map(hydrateItem) : [emptyItem()],
 
         init() {
             if (this.supplierId && ! this.supplierName) {
@@ -284,16 +286,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         emptyItem() {
-            return {
-                product_id: '',
-                product_name: '',
-                sku: '',
-                selling_price: '',
-                quantity: 1,
-                cost_price: 0,
-                open: false,
-                highlight: 0,
-            };
+            return emptyItem();
         },
 
         add() {
@@ -372,18 +365,9 @@ document.addEventListener('alpine:init', () => {
             }
 
             return this.products.filter((entry) => {
-                return entry.name.toLowerCase().includes(term) || String(entry.sku || '').toLowerCase().includes(term);
+                return entry.name.toLowerCase().includes(term)
+                    || String(entry.category_name || '').toLowerCase().includes(term);
             }).slice(0, 8);
-        },
-
-        nextSku() {
-            const suffix = this.skuSeq;
-            this.skuSeq += 1;
-            const base = this.suggestedSku.replace(/(\d+)$/, (digits) => {
-                return String(Number(digits) + suffix).padStart(digits.length, '0');
-            });
-
-            return base;
         },
 
         onProductInput(index) {
@@ -396,13 +380,15 @@ document.addEventListener('alpine:init', () => {
                 if (! item.cost_price) {
                     item.cost_price = Number(exact.cost_price || 0);
                 }
+                if (! item.selling_price) {
+                    item.selling_price = Number(exact.selling_price || item.cost_price || 0);
+                }
+                item.category_id = exact.category_id ? String(exact.category_id) : '';
+                item.category_name = exact.category_name || '';
                 return;
             }
 
             item.product_id = '';
-            if (item.product_name.trim() && ! item.sku) {
-                item.sku = this.nextSku();
-            }
         },
 
         pickProduct(index, choice) {
@@ -410,8 +396,9 @@ document.addEventListener('alpine:init', () => {
             item.product_id = String(choice.id);
             item.product_name = choice.name;
             item.cost_price = Number(choice.cost_price || 0);
-            item.sku = '';
-            item.selling_price = '';
+            item.selling_price = Number(choice.selling_price || choice.cost_price || 0);
+            item.category_id = choice.category_id ? String(choice.category_id) : '';
+            item.category_name = choice.category_name || '';
             item.open = false;
         },
 
@@ -419,11 +406,15 @@ document.addEventListener('alpine:init', () => {
             const item = this.items[index];
             item.product_id = '';
             item.open = false;
-            if (! item.sku) {
-                item.sku = this.nextSku();
-            }
-            if (item.selling_price === '' && item.cost_price) {
+            if (! item.selling_price && item.cost_price) {
                 item.selling_price = Number(item.cost_price);
+            }
+        },
+
+        onCostInput(index) {
+            const item = this.items[index];
+            if (! item.selling_price) {
+                item.selling_price = Number(item.cost_price || 0);
             }
         },
 
@@ -451,6 +442,68 @@ document.addEventListener('alpine:init', () => {
             }
             if (this.isNewProduct(item)) {
                 this.keepNewProduct(index);
+            }
+        },
+
+        isNewCategory(item) {
+            const query = (item.category_name || '').trim().toLowerCase();
+            return query !== '' && ! this.categories.some((row) => row.name.toLowerCase() === query);
+        },
+
+        categoryChoices(item) {
+            const term = (item.category_name || '').trim().toLowerCase();
+            if (! term) {
+                return this.categories.slice(0, 8);
+            }
+
+            return this.categories.filter((row) => row.name.toLowerCase().includes(term)).slice(0, 8);
+        },
+
+        onCategoryInput(index) {
+            const item = this.items[index];
+            item.category_open = true;
+            item.category_highlight = 0;
+            const match = this.categories.find((row) => row.name.toLowerCase() === (item.category_name || '').trim().toLowerCase());
+            item.category_id = match ? String(match.id) : '';
+        },
+
+        pickCategory(index, choice) {
+            const item = this.items[index];
+            item.category_id = String(choice.id);
+            item.category_name = choice.name;
+            item.category_open = false;
+        },
+
+        keepNewCategory(index) {
+            const item = this.items[index];
+            item.category_id = '';
+            item.category_open = false;
+        },
+
+        moveCategory(index, step) {
+            const item = this.items[index];
+            const choices = this.categoryChoices(item);
+            const extra = this.isNewCategory(item) ? 1 : 0;
+            const max = choices.length + extra - 1;
+            if (max < 0) {
+                return;
+            }
+            item.category_open = true;
+            item.category_highlight = Math.min(max, Math.max(0, (item.category_highlight || 0) + step));
+        },
+
+        pickHighlightedCategory(index) {
+            const item = this.items[index];
+            if (! item.category_open) {
+                return;
+            }
+            const choices = this.categoryChoices(item);
+            if ((item.category_highlight || 0) < choices.length) {
+                this.pickCategory(index, choices[item.category_highlight]);
+                return;
+            }
+            if (this.isNewCategory(item)) {
+                this.keepNewCategory(index);
             }
         },
 

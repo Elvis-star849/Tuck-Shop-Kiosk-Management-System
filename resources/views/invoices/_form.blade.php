@@ -58,7 +58,7 @@
 
         @if ($products->isEmpty())
             <div class="flash flash-error">
-                No products yet. <a href="{{ route('products.create') }}" style="color:inherit;font-weight:700;">Add a product</a> first, then come back to create the invoice.
+                No products yet. <a href="{{ route('purchases.create') }}" style="color:inherit;font-weight:700;">Record a purchase</a> first, then come back to create the invoice.
             </div>
         @else
             <div class="product-picker">

@@ -422,6 +422,17 @@ body.app-body {
 .stat-card.magenta { border-left-color: var(--magenta); }
 .stat-card.teal { border-left-color: var(--teal); }
 
+a.stat-card-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+
+a.stat-card-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.35rem 1.75rem 0 rgba(33, 40, 50, 0.18);
+}
+
 .stat-value {
     font-size: 26px;
     font-weight: 500;
@@ -643,6 +654,18 @@ body.app-body {
     vertical-align: middle;
 }
 
+.table-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.table td.table-actions-cell {
+    width: 1%;
+}
+
 .table tr:hover td { background: #fafbff; }
 
 .badge {
@@ -710,6 +733,41 @@ label.field-label {
 
 .line-table input, .line-table select {
     width: 100%;
+}
+
+.purchase-meta {
+    grid-template-columns: 1.4fr 0.9fr 1fr 1fr;
+    gap: 12px;
+}
+
+.purchase-items-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 16px 0 8px;
+}
+
+.purchase-items-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.purchase-sheet .field,
+.purchase-sheet select.field {
+    padding: 7px 10px;
+    font-size: 13px;
+}
+
+.purchase-sheet .field-label {
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.purchase-lines td {
+    padding: 8px 10px;
+    vertical-align: top;
 }
 
 .totals {
@@ -884,6 +942,15 @@ label.field-label {
 
 .pos-cart { position: sticky; top: calc(var(--topbar-height) + 16px); }
 
+.pos-qty-field {
+    width: 5.5rem;
+    min-width: 5.5rem;
+    padding: 8px 10px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+}
+
 .stock-pill {
     display: inline-flex;
     padding: 2px 8px;
@@ -987,7 +1054,7 @@ label.field-label {
 }
 
 @media (max-width: 1100px) {
-    .stat-grid, .chart-grid, .info-grid, .revenue-layout, .form-grid, .pos-layout, .new-product-grid {
+    .stat-grid, .chart-grid, .info-grid, .revenue-layout, .form-grid, .pos-layout, .new-product-grid, .purchase-meta {
         grid-template-columns: 1fr;
     }
 }

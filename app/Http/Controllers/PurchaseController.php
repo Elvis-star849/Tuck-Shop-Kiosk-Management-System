@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\InsufficientStockException;
 use App\Models\AuditLog;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
@@ -21,17 +22,14 @@ class PurchaseController extends Controller
     public function index(): View
     {
         $purchases = Purchase::query()->with('supplier')->latest('purchase_date')->paginate(12);
+        $grandTotal = (float) Purchase::query()->sum('total');
 
-        return view('purchases.index', compact('purchases'));
+        return view('purchases.index', compact('purchases', 'grandTotal'));
     }
 
     public function create(): View
     {
-        return view('purchases.create', [
-            'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
-            'products' => Product::query()->active()->orderBy('name')->get(['id', 'name', 'sku', 'cost_price', 'selling_price']),
-            'suggestedSku' => Product::nextSku(),
-        ]);
+        return view('purchases.create', $this->formCatalog());
     }
 
     public function store(Request $request, InventoryService $inventory): RedirectResponse
@@ -97,28 +95,29 @@ class PurchaseController extends Controller
 
     public function edit(Purchase $purchase): View
     {
-        $purchase->load(['supplier', 'items.product']);
+        $purchase->load(['supplier', 'items.product.category']);
 
         $products = Product::query()
+            ->with('category:id,name')
             ->where(function ($query) use ($purchase) {
                 $query->where('status', 'active')
                     ->orWhereIn('id', $purchase->items->pluck('product_id'));
             })
             ->orderBy('name')
-            ->get(['id', 'name', 'sku', 'cost_price', 'selling_price']);
+            ->get(['id', 'name', 'cost_price', 'selling_price', 'category_id']);
 
-        return view('purchases.edit', [
+        return view('purchases.edit', array_merge($this->formCatalog($products), [
             'purchase' => $purchase,
-            'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
-            'products' => $products,
-            'suggestedSku' => Product::nextSku(),
             'itemDefaults' => $purchase->items->map(fn (PurchaseItem $item) => [
                 'product_id' => $item->product_id,
                 'product_name' => $item->product?->name,
                 'quantity' => (float) $item->quantity,
                 'cost_price' => (float) $item->cost_price,
+                'selling_price' => (float) ($item->product?->selling_price ?? 0),
+                'category_id' => $item->product?->category_id,
+                'category_name' => $item->product?->category?->name,
             ])->values()->all(),
-        ]);
+        ]));
     }
 
     public function update(Request $request, Purchase $purchase, InventoryService $inventory): RedirectResponse
@@ -186,6 +185,8 @@ class PurchaseController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'exists:products,id'],
             'items.*.product_name' => ['nullable', 'string', 'max:160'],
+            'items.*.category_id' => ['nullable', 'exists:categories,id'],
+            'items.*.category_name' => ['nullable', 'string', 'max:80'],
             'items.*.sku' => ['nullable', 'string', 'max:40'],
             'items.*.selling_price' => ['nullable', 'numeric', 'min:0'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
@@ -272,7 +273,6 @@ class PurchaseController extends Controller
     private function assertNewProductFields(array $items): void
     {
         $validator = Validator::make([], []);
-        $seenSkus = [];
 
         foreach ($items as $index => $row) {
             if (! empty($row['product_id'])) {
@@ -289,17 +289,9 @@ class PurchaseController extends Controller
                 continue;
             }
 
-            $sku = strtoupper(trim((string) ($row['sku'] ?? '')));
-            if ($sku === '') {
-                $validator->errors()->add("items.$index.sku", 'SKU is required for a new product.');
-            } elseif (isset($seenSkus[$sku]) || Product::query()->where('sku', $sku)->exists()) {
-                $validator->errors()->add("items.$index.sku", 'This SKU is already in use.');
-            } else {
-                $seenSkus[$sku] = true;
-            }
-
-            if (! isset($row['selling_price']) || $row['selling_price'] === '' || $row['selling_price'] === null) {
-                $validator->errors()->add("items.$index.selling_price", 'Selling price is required for a new product.');
+            $categoryName = trim((string) ($row['category_name'] ?? ''));
+            if ($categoryName === '' && empty($row['category_id'])) {
+                $validator->errors()->add("items.$index.category_name", 'Category is required for a new product.');
             }
         }
 
@@ -322,27 +314,98 @@ class PurchaseController extends Controller
         return $existing ?? Supplier::query()->create(['name' => $name]);
     }
 
+    private function resolveCategory(mixed $id, ?string $name): Category
+    {
+        $name = trim((string) $name);
+
+        if ($id) {
+            $category = Category::query()->find($id);
+            if ($category && ($name === '' || strcasecmp($category->name, $name) === 0)) {
+                return $category;
+            }
+        }
+
+        if ($name === '') {
+            throw ValidationException::withMessages([
+                'items' => 'Category is required for a new product.',
+            ]);
+        }
+
+        $existing = Category::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $category = Category::query()->create(['name' => $name]);
+        AuditLog::record('category.created', 'Admin added category "'.$category->name.'" while recording a purchase', $category);
+
+        return $category;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Product>|null  $products
+     * @return array<string, mixed>
+     */
+    private function formCatalog($products = null): array
+    {
+        $products ??= Product::query()
+            ->active()
+            ->with('category:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'cost_price', 'selling_price', 'category_id']);
+
+        return [
+            'suppliers' => Supplier::query()->orderBy('name')->get(['id', 'name']),
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'products' => $products->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'cost_price' => (float) $product->cost_price,
+                'selling_price' => (float) $product->selling_price,
+                'category_id' => $product->category_id,
+                'category_name' => $product->category?->name,
+            ])->values(),
+        ];
+    }
+
     /**
      * @param  array<string, mixed>  $row
      */
     private function resolveProduct(array $row, int $supplierId): Product
     {
         if (! empty($row['product_id'])) {
-            return Product::query()->findOrFail($row['product_id']);
+            $product = Product::query()->findOrFail($row['product_id']);
+            $this->applyCategoryToProduct($product, $row);
+            $this->applySellingToProduct($product, $row);
+
+            return $product;
         }
 
         $name = trim((string) ($row['product_name'] ?? ''));
         $existing = $this->findProductByName($name);
         if ($existing) {
+            $this->applyCategoryToProduct($existing, $row);
+            $this->applySellingToProduct($existing, $row);
+
             return $existing;
         }
 
         $cost = round((float) $row['cost_price'], 2);
-        $selling = round((float) $row['selling_price'], 2);
+        $selling = isset($row['selling_price']) && $row['selling_price'] !== '' && $row['selling_price'] !== null
+            ? round((float) $row['selling_price'], 2)
+            : $cost;
+        $sku = strtoupper(trim((string) ($row['sku'] ?? '')));
+        if ($sku === '') {
+            $sku = Product::nextSku();
+        }
 
         return Product::query()->create([
-            'sku' => strtoupper(trim((string) $row['sku'])),
+            'sku' => $sku,
             'name' => $name,
+            'category_id' => $this->resolveCategory($row['category_id'] ?? null, $row['category_name'] ?? '')->id,
             'cost_price' => $cost,
             'selling_price' => $selling,
             'unit_price' => $selling,
@@ -352,6 +415,37 @@ class PurchaseController extends Controller
             'unit' => 'items',
             'supplier_id' => $supplierId,
             'status' => 'active',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function applyCategoryToProduct(Product $product, array $row): void
+    {
+        $name = trim((string) ($row['category_name'] ?? ''));
+        if ($name === '' && empty($row['category_id'])) {
+            return;
+        }
+
+        $product->update([
+            'category_id' => $this->resolveCategory($row['category_id'] ?? null, $name)->id,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function applySellingToProduct(Product $product, array $row): void
+    {
+        if (! isset($row['selling_price']) || $row['selling_price'] === '' || $row['selling_price'] === null) {
+            return;
+        }
+
+        $selling = round((float) $row['selling_price'], 2);
+        $product->update([
+            'selling_price' => $selling,
+            'unit_price' => $selling,
         ]);
     }
 

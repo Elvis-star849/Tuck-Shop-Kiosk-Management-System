@@ -19,7 +19,7 @@
     @endif
 
     <div class="stat-grid">
-        <div class="card stat-card">
+        <a class="card stat-card stat-card-link" href="{{ route('sales.index', ['date' => now()->toDateString()]) }}">
             <div>
                 <div class="stat-value">{{ money($todayRevenue) }}</div>
                 <div class="stat-label">Today’s sales</div>
@@ -28,30 +28,30 @@
             <div class="icon-circle bg-purple">
                 <span class="material-symbols-outlined">payments</span>
             </div>
-        </div>
+        </a>
         @if ($isAdmin)
-        <div class="card stat-card teal">
+        <a class="card stat-card teal stat-card-link" href="{{ route('reports.index', ['period' => 'daily', 'tab' => 'profit']) }}">
             <div>
-                <div class="stat-value">{{ money($todayProfit) }}</div>
-                <div class="stat-label">Today’s profit</div>
-                <div class="stat-change">Gross margin on POS sales</div>
+                <div class="stat-value">{{ money_profit($todayProfit) }}</div>
+                <div class="stat-label">{{ $todayProfit < 0 ? 'Today’s loss' : 'Today’s profit' }}</div>
+                <div class="stat-change">Sales minus purchases</div>
             </div>
             <div class="icon-circle bg-teal">
                 <span class="material-symbols-outlined">trending_up</span>
             </div>
-        </div>
-        <div class="card stat-card yellow">
+        </a>
+        <a class="card stat-card yellow stat-card-link" href="{{ route('expenses.index', ['date' => now()->toDateString()]) }}">
             <div>
                 <div class="stat-value">{{ money($todayExpenses) }}</div>
                 <div class="stat-label">Today’s expenses</div>
-                <div class="stat-change">Net {{ money($netProfit) }}</div>
+                <div class="stat-change">Net {{ money_profit($netProfit) }}</div>
             </div>
             <div class="icon-circle bg-yellow">
                 <span class="material-symbols-outlined">account_balance_wallet</span>
             </div>
-        </div>
+        </a>
         @endif
-        <div class="card stat-card magenta">
+        <a class="card stat-card magenta stat-card-link" href="{{ route('sales.index', ['date' => now()->toDateString()]) }}">
             <div>
                 <div class="stat-value">{{ $todayCount }}</div>
                 <div class="stat-label">Transactions</div>
@@ -60,7 +60,7 @@
             <div class="icon-circle bg-magenta">
                 <span class="material-symbols-outlined">receipt</span>
             </div>
-        </div>
+        </a>
     </div>
 
     <div class="chart-grid">

@@ -135,36 +135,74 @@
 
     @if ($tab === 'profit')
         <div class="stat-grid">
-            <div class="card stat-card teal">
+            <div class="card stat-card">
                 <div>
-                    <div class="stat-value">{{ money($posProfit) }}</div>
-                    <div class="stat-label">Gross profit · {{ $label }}</div>
+                    <div class="stat-value">{{ money($posSales) }}</div>
+                    <div class="stat-label">Sales · {{ $label }}</div>
                 </div>
-                <div class="icon-circle bg-teal"><span class="material-symbols-outlined">trending_up</span></div>
+                <div class="icon-circle bg-purple"><span class="material-symbols-outlined">point_of_sale</span></div>
             </div>
             <div class="card stat-card yellow">
                 <div>
-                    <div class="stat-value">{{ money($expenses) }}</div>
-                    <div class="stat-label">Expenses</div>
+                    <div class="stat-value">{{ money($purchases) }}</div>
+                    <div class="stat-label">Purchases</div>
                 </div>
-                <div class="icon-circle bg-yellow"><span class="material-symbols-outlined">payments</span></div>
+                <div class="icon-circle bg-yellow"><span class="material-symbols-outlined">local_shipping</span></div>
+            </div>
+            <div class="card stat-card teal">
+                <div>
+                    <div class="stat-value">{{ money_profit($posProfit) }}</div>
+                    <div class="stat-label">{{ $posProfit < 0 ? 'Loss' : 'Profit' }} · sales − purchases</div>
+                </div>
+                <div class="icon-circle bg-teal"><span class="material-symbols-outlined">trending_up</span></div>
             </div>
             <div class="card stat-card magenta">
                 <div>
-                    <div class="stat-value">{{ money($netProfit) }}</div>
-                    <div class="stat-label">Net profit</div>
+                    <div class="stat-value">{{ money_profit($netProfit) }}</div>
+                    <div class="stat-label">Net after expenses</div>
                 </div>
                 <div class="icon-circle bg-magenta"><span class="material-symbols-outlined">account_balance</span></div>
             </div>
         </div>
         <div class="card">
-            <div class="card-pad"><h2 class="card-title">Monthly profit</h2></div>
+            <div class="card-pad">
+                <h2 class="card-title">Daily profit history</h2>
+                <div class="card-kicker">Each day: sales total − purchases total{{ $period === 'daily' ? ' · last 30 days' : '' }}</div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Sales</th>
+                            <th>Purchases</th>
+                            <th>Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($dailyProfit as $row)
+                            <tr>
+                                <td>{{ $row['date']->format('d M Y') }}</td>
+                                <td>{{ money($row['sales']) }}</td>
+                                <td>{{ money($row['purchases']) }}</td>
+                                <td>{{ money_profit($row['profit']) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="empty">No sales or purchases in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card" style="margin-top:18px;">
+            <div class="card-pad"><h2 class="card-title">Monthly profit ({{ $year }})</h2></div>
             <div class="table-wrap">
                 <table class="table">
                     <thead>
                         <tr>
                             <th>Month</th>
                             <th>Sales</th>
+                            <th>Purchases</th>
                             <th>Profit</th>
                             <th>Expenses</th>
                         </tr>
@@ -174,7 +212,8 @@
                             <tr>
                                 <td>{{ $row['month'] }}</td>
                                 <td>{{ money($row['sales']) }}</td>
-                                <td>{{ money($row['profit']) }}</td>
+                                <td>{{ money($row['purchases']) }}</td>
+                                <td>{{ money_profit($row['profit']) }}</td>
                                 <td>{{ money($row['expenses']) }}</td>
                             </tr>
                         @endforeach
@@ -340,7 +379,13 @@
 
     @if ($tab === 'cashiers')
         <div class="card">
-            <div class="card-pad"><h2 class="card-title">Cashier report · {{ $label }}</h2></div>
+            <div class="card-pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <h2 class="card-title" style="margin:0;">Cashier report · {{ $label }}</h2>
+                <a class="btn btn-outline" href="{{ route('sales.export', [
+                    'from' => $periodStart,
+                    'to' => $periodEnd,
+                ]) }}">Download all sales</a>
+            </div>
             <div class="table-wrap">
                 <table class="table">
                     <thead>
@@ -348,6 +393,7 @@
                             <th>Cashier</th>
                             <th>Transactions</th>
                             <th>Sales</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -356,9 +402,25 @@
                                 <td>{{ $row->user?->name ?: 'Unknown' }}</td>
                                 <td>{{ $row->txns }}</td>
                                 <td>{{ money($row->sales) }}</td>
+                                <td class="table-actions-cell">
+                                    @if ($row->user_id)
+                                        <div class="table-actions">
+                                            <a class="btn btn-ghost" href="{{ route('sales.index', [
+                                                'cashier_id' => $row->user_id,
+                                                'from' => $periodStart,
+                                                'to' => $periodEnd,
+                                            ]) }}">View</a>
+                                            <a class="btn btn-outline" href="{{ route('sales.export', [
+                                                'cashier_id' => $row->user_id,
+                                                'from' => $periodStart,
+                                                'to' => $periodEnd,
+                                            ]) }}">Download</a>
+                                        </div>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="empty">No cashier sales in this period.</td></tr>
+                            <tr><td colspan="4" class="empty">No cashier sales in this period.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

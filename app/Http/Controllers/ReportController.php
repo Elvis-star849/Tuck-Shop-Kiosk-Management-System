@@ -38,27 +38,32 @@ class ReportController extends Controller
             ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId));
 
         $posSales = (float) (clone $salesQuery)->sum('total');
-        $posProfit = (clone $salesQuery)->with('items')->get()->sum(fn (Sale $sale) => $sale->profit());
         $expenses = (float) Expense::query()->whereBetween('expense_date', [$start, $end])->sum('amount');
         $purchases = (float) Purchase::query()->whereBetween('purchase_date', [$start, $end])->sum('total');
+        $posProfit = round($posSales - $purchases, 2);
         $collected = (float) Payment::query()->whereBetween('payment_date', [$start, $end])->sum('amount');
 
         $monthly = collect(range(1, 12))->map(function (int $month) use ($year, $cashierId) {
             $monthStart = now()->setYear($year)->month($month)->startOfMonth();
             $monthEnd = (clone $monthStart)->endOfMonth();
-            $monthSales = Sale::query()
+            $monthSales = (float) Sale::query()
                 ->whereBetween('sold_at', [$monthStart, $monthEnd])
                 ->counted()
-                ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId));
+                ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId))
+                ->sum('total');
+            $monthPurchases = (float) Purchase::query()->whereBetween('purchase_date', [$monthStart, $monthEnd])->sum('total');
 
             return [
                 'month' => $monthStart->format('F'),
-                'sales' => (float) (clone $monthSales)->sum('total'),
-                'profit' => (clone $monthSales)->with('items')->get()->sum(fn (Sale $sale) => $sale->profit()),
-                'purchases' => (float) Purchase::query()->whereBetween('purchase_date', [$monthStart, $monthEnd])->sum('total'),
+                'sales' => $monthSales,
+                'purchases' => $monthPurchases,
+                'profit' => round($monthSales - $monthPurchases, 2),
                 'expenses' => (float) Expense::query()->whereBetween('expense_date', [$monthStart, $monthEnd])->sum('amount'),
             ];
         });
+
+        $historyStart = $period === 'daily' ? now()->subDays(29)->startOfDay() : $start;
+        $dailyProfit = $this->dailyProfitHistory($historyStart, $end, $cashierId);
 
         $topSellers = SaleItem::query()
             ->selectRaw('product_id, description, SUM(quantity) as qty, SUM(line_total) as revenue')
@@ -117,6 +122,8 @@ class ReportController extends Controller
             'period' => $period,
             'tab' => $tab,
             'label' => $label,
+            'periodStart' => $start->toDateString(),
+            'periodEnd' => $end->toDateString(),
             'cashierId' => $cashierId,
             'cashiers' => User::query()->orderBy('name')->get(['id', 'name', 'role']),
             'posSales' => $posSales,
@@ -126,6 +133,7 @@ class ReportController extends Controller
             'purchases' => $purchases,
             'collected' => $collected,
             'monthly' => $monthly,
+            'dailyProfit' => $dailyProfit,
             'topSellers' => $topSellers,
             'cashierReport' => $cashierReport,
             'lowStock' => $lowStock,
@@ -134,5 +142,49 @@ class ReportController extends Controller
             'recentPurchases' => $recentPurchases,
             'recentExpenses' => $recentExpenses,
         ]);
+    }
+
+    /**
+     * Profit per day = sales total − purchases total.
+     */
+    private function dailyProfitHistory($start, $end, ?int $cashierId)
+    {
+        $salesByDay = Sale::query()
+            ->whereBetween('sold_at', [$start, $end])
+            ->counted()
+            ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId))
+            ->selectRaw('date(sold_at) as day, SUM(total) as total')
+            ->groupByRaw('date(sold_at)')
+            ->pluck('total', 'day')
+            ->mapWithKeys(fn ($total, $day) => [substr((string) $day, 0, 10) => (float) $total]);
+
+        $purchasesByDay = Purchase::query()
+            ->whereBetween('purchase_date', [$start, $end])
+            ->selectRaw('date(purchase_date) as day, SUM(total) as total')
+            ->groupByRaw('date(purchase_date)')
+            ->pluck('total', 'day')
+            ->mapWithKeys(fn ($total, $day) => [substr((string) $day, 0, 10) => (float) $total]);
+
+        $skipEmpty = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) > 31;
+        $rows = collect();
+
+        for ($date = $start->copy()->startOfDay(); $date->lte($end); $date->addDay()) {
+            $key = $date->toDateString();
+            $sales = (float) ($salesByDay[$key] ?? 0);
+            $purchases = (float) ($purchasesByDay[$key] ?? 0);
+
+            if ($skipEmpty && $sales == 0.0 && $purchases == 0.0) {
+                continue;
+            }
+
+            $rows->push([
+                'date' => $date->copy(),
+                'sales' => $sales,
+                'purchases' => $purchases,
+                'profit' => round($sales - $purchases, 2),
+            ]);
+        }
+
+        return $rows->reverse()->values();
     }
 }

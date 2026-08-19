@@ -1,8 +1,11 @@
 <x-app-layout>
     <x-slot name="header">Expenses</x-slot>
-    <x-slot name="subtitle">Shop running costs</x-slot>
+    <x-slot name="subtitle">{{ ! empty($date) ? 'Expenses on '.\Illuminate\Support\Carbon::parse($date)->format('d M Y') : 'Shop running costs' }}</x-slot>
     <x-slot name="title">Expenses</x-slot>
     <x-slot name="actions">
+        @if (! empty($date))
+            <a class="btn btn-ghost" href="{{ route('expenses.index') }}">All dates</a>
+        @endif
         <a class="btn btn-primary" href="{{ route('expenses.create') }}">New expense</a>
     </x-slot>
 
@@ -39,7 +42,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="empty">No expenses yet.</td></tr>
+                        <tr><td colspan="6" class="empty">{{ ! empty($date) ? 'No expenses on this date.' : 'No expenses yet.' }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
