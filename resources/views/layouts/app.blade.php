@@ -45,7 +45,7 @@
                 @if (auth()->user()->isAdmin())
                     x-data="{
                         groups: {
-                            sales: {{ request()->routeIs('pos.*', 'sales.*', 'invoices.*') ? 'true' : 'false' }},
+                            sales: {{ request()->routeIs('pos.*', 'sales.*', 'invoices.*', 'returns.*') ? 'true' : 'false' }},
                             inventory: {{ request()->routeIs('products.*', 'categories.*', 'stock.*') ? 'true' : 'false' }},
                             purchasing: {{ request()->routeIs('suppliers.*', 'purchases.*') ? 'true' : 'false' }},
                             finance: {{ request()->routeIs('payments.*', 'expenses.*', 'reports.*') ? 'true' : 'false' }},
@@ -56,13 +56,13 @@
             >
                 @if (auth()->user()->isAdmin())
                     @php
-                        $salesOpen = request()->routeIs('pos.*', 'sales.*', 'invoices.*');
+                        $salesOpen = request()->routeIs('pos.*', 'sales.*', 'invoices.*', 'returns.*');
                         $inventoryOpen = request()->routeIs('products.*', 'categories.*', 'stock.*');
                         $purchasingOpen = request()->routeIs('suppliers.*', 'purchases.*');
                         $financeOpen = request()->routeIs('payments.*', 'expenses.*', 'reports.*');
                         $managementOpen = request()->routeIs('customers.*', 'users.*', 'audit-logs.*', 'settings.*');
                         $salesHistoryActive = request()->routeIs('sales.*') && request('status') !== 'cancel_requested';
-                        $returnsActive = request()->routeIs('sales.index') && request('status') === 'cancel_requested';
+                        $voidsActive = request()->routeIs('sales.index') && request('status') === 'cancel_requested';
                     @endphp
 
                     <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
@@ -81,8 +81,9 @@
                         <div class="nav-group-items" x-show="groups.sales" @if (! $salesOpen) style="display:none" @endif>
                             <a class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.index') }}">New sale</a>
                             <a class="nav-link {{ $salesHistoryActive ? 'active' : '' }}" href="{{ route('sales.index') }}">Sales history</a>
+                            <a class="nav-link {{ request()->routeIs('returns.*') ? 'active' : '' }}" href="{{ route('returns.index') }}">Returns / refunds</a>
                             <a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">Invoices</a>
-                            <a class="nav-link {{ $returnsActive ? 'active' : '' }}" href="{{ route('sales.index', ['status' => 'cancel_requested']) }}">Returns / refunds</a>
+                            <a class="nav-link {{ $voidsActive ? 'active' : '' }}" href="{{ route('sales.index', ['status' => 'cancel_requested']) }}">Pending sale voids</a>
                         </div>
                     </div>
 
@@ -133,7 +134,7 @@
                         <div class="nav-group-items" x-show="groups.management" @if (! $managementOpen) style="display:none" @endif>
                             <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">Customers</a>
                             <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" href="{{ route('users.index') }}">Users & roles</a>
-                            <a class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">Audit logs</a>
+                            <a class="nav-link {{ request()->routeIs('audit-logs.*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">Activity log</a>
                             <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.edit') }}">Settings</a>
                         </div>
                     </div>
@@ -150,6 +151,9 @@
                     </a>
                     <a class="nav-link {{ request()->routeIs('sales.*') ? 'active' : '' }}" href="{{ route('sales.index') }}">
                         <span class="material-symbols-outlined">receipt</span> My sales
+                    </a>
+                    <a class="nav-link {{ request()->routeIs('returns.*') ? 'active' : '' }}" href="{{ route('returns.index') }}">
+                        <span class="material-symbols-outlined">assignment_return</span> Returns / refunds
                     </a>
                     <a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">
                         <span class="material-symbols-outlined">receipt_long</span> Invoices / Receipts

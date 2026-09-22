@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, RecordsChanges;
 
     protected $fillable = [
         'shop_id',
@@ -58,6 +59,11 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
@@ -100,11 +106,38 @@ class Sale extends Model
         return $this->status === 'cancelled';
     }
 
+    public function isRefunded(): bool
+    {
+        return $this->status === 'refunded';
+    }
+
+    public function hasPendingReturn(): bool
+    {
+        return $this->returns()->where('status', 'requested')->exists();
+    }
+
+    public function approvedRefundTotal(): float
+    {
+        return round((float) $this->returns()->where('status', 'approved')->sum('refund_amount'), 2);
+    }
+
+    public function remainingRefundableTotal(): float
+    {
+        return round(max(0, (float) $this->total - $this->approvedRefundTotal()), 2);
+    }
+
+    public function isFullyReturned(): bool
+    {
+        $this->loadMissing('items');
+
+        return $this->items->every(fn (SaleItem $item) => (float) $item->quantity_returned >= (float) $item->quantity);
+    }
+
     public function balance(): float
     {
         $recorded = $this->relationLoaded('payments')
-            ? (float) $this->payments->sum('amount')
-            : (float) $this->payments()->sum('amount');
+            ? (float) $this->payments->sum(fn (Payment $payment) => $payment->signedAmount())
+            : (float) $this->payments()->get()->sum(fn (Payment $payment) => $payment->signedAmount());
 
         $paid = max((float) $this->amount_paid, $recorded);
 
@@ -113,7 +146,7 @@ class Sale extends Model
 
     public function scopeCounted($query)
     {
-        return $query->whereNotIn('status', ['cancelled', 'pending_payment']);
+        return $query->whereNotIn('status', ['cancelled', 'pending_payment', 'refunded']);
     }
 
     public static function nextNumber(): string

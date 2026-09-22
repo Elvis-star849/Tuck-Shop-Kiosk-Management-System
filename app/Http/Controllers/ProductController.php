@@ -168,7 +168,6 @@ class ProductController extends Controller
         }
 
         $category = Category::query()->create(['name' => $name]);
-        AuditLog::record('category.created', 'Admin added category "'.$category->name.'" while saving a product', $category);
 
         return $category;
     }

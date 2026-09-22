@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\SupplierController;
@@ -41,6 +42,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/sales/{sale}/pdf', [SaleController::class, 'downloadPdf'])->name('sales.pdf');
     Route::post('/sales/{sale}/cancel-request', [SaleController::class, 'requestCancel'])->name('sales.cancel-request');
     Route::post('/sales/{sale}/void-pending', [SaleController::class, 'voidPending'])->name('sales.void-pending');
+
+    Route::get('/returns', [SaleReturnController::class, 'index'])->name('returns.index');
+    Route::post('/returns/lookup', [SaleReturnController::class, 'lookup'])->name('returns.lookup');
+    Route::get('/returns/sale', [SaleReturnController::class, 'create'])->name('returns.sale');
+    Route::post('/returns', [SaleReturnController::class, 'store'])->name('returns.store');
 
     Route::get('/sales/{sale}/ecocash', [EcocashPaymentController::class, 'createForSale'])->name('sales.ecocash.create');
     Route::post('/sales/{sale}/ecocash', [EcocashPaymentController::class, 'storeForSale'])->name('sales.ecocash.store');
@@ -85,6 +91,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/stock/adjust', [StockController::class, 'createAdjust'])->name('stock.adjust');
         Route::post('/stock/adjust', [StockController::class, 'storeAdjust'])->name('stock.adjust.store');
         Route::get('/stock/expired', [StockController::class, 'expired'])->name('stock.expired');
+        Route::post('/stock/{product}/write-off', [StockController::class, 'writeOffExpired'])->name('stock.write-off');
         Route::get('/stock/low', [StockController::class, 'low'])->name('stock.low');
 
         Route::resource('categories', CategoryController::class);
@@ -101,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/sales/{sale}/cancel-approve', [SaleController::class, 'approveCancel'])->name('sales.cancel-approve');
         Route::post('/sales/{sale}/cancel-reject', [SaleController::class, 'rejectCancel'])->name('sales.cancel-reject');
+        Route::post('/returns/{saleReturn}/approve', [SaleReturnController::class, 'approve'])->name('returns.approve');
+        Route::post('/returns/{saleReturn}/reject', [SaleReturnController::class, 'reject'])->name('returns.reject');
     });
 });
 

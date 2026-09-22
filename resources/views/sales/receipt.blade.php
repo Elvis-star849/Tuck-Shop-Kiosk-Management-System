@@ -24,7 +24,7 @@
         <div class="muted">{{ config('company.address') }}</div>
         <div class="muted">{{ config('company.phone') }}</div>
         <hr>
-        <div>Sale: {{ $sale->sale_number }}</div>
+        <div>Receipt number: {{ $sale->sale_number }}</div>
         <div>Date: {{ $sale->sold_at->format('d M Y H:i') }}</div>
         <div>Cashier: {{ $sale->user?->name }}</div>
         <hr>

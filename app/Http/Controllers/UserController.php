@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,8 +40,6 @@ class UserController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        AuditLog::record('user.created', 'Admin created '.$user->role.' '.$user->name, $user);
-
         return redirect()->route('users.index')->with('success', 'User created.');
     }
 
@@ -71,7 +68,6 @@ class UserController extends Controller
             $user->password = Hash::make($data['password']);
         }
         $user->save();
-        AuditLog::record('user.updated', 'Admin updated user '.$user->name.' ('.$user->role.')', $user);
 
         return redirect()->route('users.index')->with('success', 'User updated.');
     }

@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, RecordsChanges;
 
     protected $fillable = ['shop_id', 'key', 'value'];
 

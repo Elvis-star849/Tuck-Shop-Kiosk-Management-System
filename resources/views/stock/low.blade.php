@@ -22,7 +22,7 @@
                             <td><a href="{{ route('products.show', $product) }}" style="color:var(--purple);font-weight:600;">{{ $product->name }}</a></td>
                             <td><span class="stock-pill {{ $product->isOutOfStock() ? 'stock-pill-out' : 'stock-pill-low' }}">{{ rtrim(rtrim(number_format($product->quantity, 2), '0'), '.') }} {{ $product->unit }}</span></td>
                             <td>{{ rtrim(rtrim(number_format($product->min_stock, 2), '0'), '.') }}</td>
-                            <td><a class="btn btn-outline" href="{{ route('stock.in') }}">Stock in</a></td>
+                            <td><a class="btn btn-outline" href="{{ route('purchases.create') }}">New purchase</a></td>
                         </tr>
                     @empty
                         <tr><td colspan="4" class="empty">Stock levels look healthy.</td></tr>

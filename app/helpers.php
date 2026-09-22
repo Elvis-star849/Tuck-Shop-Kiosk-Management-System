@@ -33,6 +33,12 @@ if (! function_exists('invoice_status_label')) {
             'completed' => 'Completed',
             'pending_payment' => 'Awaiting payment',
             'cancel_requested' => 'Cancel requested',
+            'refunded' => 'Refunded',
+            'requested' => 'Requested',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'refund' => 'Refund',
+            'payment' => 'Payment',
             default => ucfirst(str_replace('_', ' ', $status)),
         };
     }

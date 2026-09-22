@@ -22,6 +22,9 @@
             <a class="btn btn-ghost" href="{{ route('sales.index') }}">All sales</a>
         @endif
         <a class="btn btn-ghost" href="{{ route('sales.export', request()->only(['cashier_id', 'from', 'to', 'date', 'status'])) }}">Download sales</a>
+        @if (auth()->user()->isAdmin())
+            <a class="btn btn-ghost" href="{{ route('sales.index', ['status' => 'cancel_requested']) }}">Pending sale voids</a>
+        @endif
         <a class="btn btn-primary" href="{{ route('pos.index') }}">New sale</a>
     </x-slot>
 

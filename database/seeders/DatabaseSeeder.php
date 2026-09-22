@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Expense;
@@ -23,6 +24,13 @@ use Illuminate\Support\Facades\Hash;
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
+    {
+        AuditLog::withoutRecording(function (): void {
+            $this->seedShop();
+        });
+    }
+
+    private function seedShop(): void
     {
         $shop = Shop::query()->updateOrCreate(
             ['name' => 'Chindeka Tuck Shop'],

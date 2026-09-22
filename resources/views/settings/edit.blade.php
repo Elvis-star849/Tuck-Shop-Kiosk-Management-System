@@ -43,6 +43,11 @@
                 <label class="field-label" for="receipt_footer">Receipt footer</label>
                 <input class="field" id="receipt_footer" name="receipt_footer" value="{{ old('receipt_footer', $settings['receipt_footer']) }}">
             </div>
+            <div>
+                <label class="field-label" for="cashier_max">Cashier same-day cash refund limit</label>
+                <input class="field" id="cashier_max" type="number" step="0.01" min="0" name="cashier_max" value="{{ old('cashier_max', $settings['cashier_max']) }}" placeholder="No extra cap">
+                <p class="muted" style="margin-top:6px;">Leave blank for no extra cap. Older sales and EcoCash always need admin approval.</p>
+            </div>
         </div>
         <div class="actions" style="margin-top:18px;">
             <button class="btn btn-primary" type="submit">Save settings</button>

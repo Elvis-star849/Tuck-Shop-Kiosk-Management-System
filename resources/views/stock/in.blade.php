@@ -1,9 +1,17 @@
 <x-app-layout>
     <x-slot name="header">Stock management</x-slot>
-    <x-slot name="subtitle">Add stock from a supplier or adjustment</x-slot>
-    <x-slot name="title">Stock in</x-slot>
+    <x-slot name="subtitle">Opening stock only. Customer returns use a receipt number. Supplier stock belongs on Purchases.</x-slot>
+    <x-slot name="title">Opening stock</x-slot>
 
     @include('stock._tabs')
+
+    <p class="muted" style="margin:0 0 14px;">
+        To receive stock from a supplier, use
+        <a href="{{ route('purchases.create') }}" style="color:var(--purple);font-weight:600;">New purchase</a>.
+        A customer bringing goods back must use
+        <a href="{{ route('returns.index') }}" style="color:var(--purple);font-weight:600;">Returns / refunds</a>
+        with the receipt number.
+    </p>
 
     <form method="POST" action="{{ route('stock.in.store') }}" class="card card-pad" style="max-width:720px;">
         @csrf
@@ -27,15 +35,7 @@
                 <label class="field-label" for="cost_price">Cost price (optional)</label>
                 <input class="field" id="cost_price" type="number" step="0.01" min="0" name="cost_price" value="{{ old('cost_price') }}">
             </div>
-            <div>
-                <label class="field-label" for="reason">Reason</label>
-                <select class="field" id="reason" name="reason">
-                    <option value="Supplier Purchase" @selected(old('reason') === 'Supplier Purchase')>Supplier Purchase</option>
-                    <option value="Opening Stock" @selected(old('reason') === 'Opening Stock')>Opening Stock</option>
-                    <option value="Stock Adjustment" @selected(old('reason') === 'Stock Adjustment')>Stock Adjustment</option>
-                    <option value="Return" @selected(old('reason') === 'Return')>Customer Return</option>
-                </select>
-            </div>
+            <input type="hidden" name="reason" value="Opening Stock">
             <div class="full">
                 <label class="field-label" for="notes">Notes</label>
                 <textarea class="field" id="notes" name="notes" rows="2">{{ old('notes') }}</textarea>

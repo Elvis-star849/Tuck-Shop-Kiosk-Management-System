@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     /** @use HasFactory<\Database\Factories\ProductFactory> */
-    use BelongsToShop, HasFactory;
+    use BelongsToShop, HasFactory, RecordsChanges;
 
     public const STATUSES = [
         'active' => 'Active',
@@ -58,22 +59,6 @@ class Product extends Model
                 $product->unit_price = $product->selling_price;
             } elseif ($product->isDirty('unit_price') && ! $product->isDirty('selling_price')) {
                 $product->selling_price = $product->unit_price;
-            }
-        });
-
-        static::updating(function (Product $product): void {
-            foreach (['selling_price', 'min_stock', 'cost_price', 'status'] as $field) {
-                if ($product->isDirty($field)) {
-                    $label = str_replace('_', ' ', $field);
-                    AuditLog::record(
-                        'product.'.$field.'_changed',
-                        'Admin changed '.$product->name.' '.$label.' from '.$product->getOriginal($field).' to '.$product->{$field},
-                        $product,
-                        $field,
-                        $product->getOriginal($field),
-                        $product->{$field},
-                    );
-                }
             }
         });
     }

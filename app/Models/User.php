@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use BelongsToShop, HasFactory, Notifiable;
+    use BelongsToShop, HasFactory, Notifiable, RecordsChanges;
 
     /**
      * The attributes that are mass assignable.

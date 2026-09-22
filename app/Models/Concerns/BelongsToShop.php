@@ -6,6 +6,8 @@ use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\SaleReturn;
 use App\Models\Shop;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +50,8 @@ trait BelongsToShop
     {
         $map = [
             'sale_id' => Sale::class,
+            'sale_return_id' => SaleReturn::class,
+            'sale_item_id' => SaleItem::class,
             'invoice_id' => Invoice::class,
             'purchase_id' => Purchase::class,
             'product_id' => Product::class,

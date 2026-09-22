@@ -13,6 +13,8 @@ class AuditLog extends Model
 {
     use BelongsToShop;
 
+    public static bool $enabled = true;
+
     protected $fillable = [
         'shop_id',
         'auditable_type',
@@ -36,6 +38,17 @@ class AuditLog extends Model
         return $this->morphTo();
     }
 
+    public static function withoutRecording(callable $callback): mixed
+    {
+        static::$enabled = false;
+
+        try {
+            return $callback();
+        } finally {
+            static::$enabled = true;
+        }
+    }
+
     public static function record(
         string $action,
         string $description,
@@ -43,13 +56,25 @@ class AuditLog extends Model
         ?string $field = null,
         mixed $old = null,
         mixed $new = null,
-    ): self {
+    ): ?self {
+        if (! static::$enabled) {
+            return null;
+        }
+
+        $shopId = null;
+        if ($subject instanceof Shop) {
+            $shopId = $subject->getKey();
+        } elseif ($subject && isset($subject->shop_id)) {
+            $shopId = $subject->shop_id;
+        }
+
         return static::query()->create([
+            'shop_id' => $shopId,
             'auditable_type' => $subject ? $subject::class : 'system',
             'auditable_id' => $subject?->getKey() ?? 0,
             'field' => $field ?? 'event',
-            'old_value' => $old !== null ? (string) $old : null,
-            'new_value' => $new !== null ? (string) $new : null,
+            'old_value' => $old !== null ? mb_substr((string) $old, 0, 2000) : null,
+            'new_value' => $new !== null ? mb_substr((string) $new, 0, 2000) : null,
             'user_id' => Auth::id(),
             'action' => $action,
             'description' => $description,

@@ -8,13 +8,20 @@
         </a>
         @if ($isAdmin)
             <a class="btn btn-ghost" href="{{ route('reports.index') }}">Reports</a>
+            <a class="btn btn-ghost" href="{{ route('audit-logs.index') }}">Activity</a>
         @endif
     </x-slot>
 
-    @if ($isAdmin && $pendingCancels)
+    @if ($isAdmin && ($pendingCancels || $pendingReturns))
         <div class="flash flash-error">
-            {{ $pendingCancels }} sale cancellation {{ $pendingCancels === 1 ? 'request needs' : 'requests need' }} approval.
-            <a href="{{ route('sales.index', ['status' => 'cancel_requested']) }}" style="color:inherit;font-weight:700;">Review</a>
+            @if ($pendingReturns)
+                {{ $pendingReturns }} return {{ $pendingReturns === 1 ? 'needs' : 'requests need' }} approval.
+                <a href="{{ route('returns.index') }}" style="color:inherit;font-weight:700;">Review returns</a>
+            @endif
+            @if ($pendingCancels)
+                {{ $pendingReturns ? ' ' : '' }}{{ $pendingCancels }} sale cancellation {{ $pendingCancels === 1 ? 'request needs' : 'requests need' }} approval.
+                <a href="{{ route('sales.index', ['status' => 'cancel_requested']) }}" style="color:inherit;font-weight:700;">Review voids</a>
+            @endif
         </div>
     @endif
 
@@ -259,4 +266,38 @@
             <div class="cloud-art" aria-hidden="true"></div>
         </div>
     </div>
+
+    @if ($isAdmin)
+        <div class="card" style="margin-top:18px;">
+            <div class="card-pad card-head-row">
+                <div>
+                    <h2 class="card-title">Recent activity</h2>
+                    <div class="card-kicker">Every change in this shop — admin only</div>
+                </div>
+                <a class="view-all" href="{{ route('audit-logs.index') }}">View all →</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Who</th>
+                            <th>Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($recentChanges as $log)
+                            <tr>
+                                <td>{{ $log->created_at->format('d M Y H:i') }}</td>
+                                <td>{{ $log->user?->name ?: 'System' }}</td>
+                                <td>{{ $log->description }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="empty">No changes recorded yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
 </x-app-layout>

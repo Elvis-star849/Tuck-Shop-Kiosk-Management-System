@@ -136,10 +136,15 @@ class InventoryService
                 continue;
             }
 
+            $remaining = round((float) $item->quantity - (float) $item->quantity_returned, 2);
+            if ($remaining <= 0) {
+                continue;
+            }
+
             $this->apply(
                 $item->product,
                 'return',
-                (float) $item->quantity,
+                $remaining,
                 'Sale cancelled',
                 $sale->sale_number,
                 \App\Models\Sale::class,

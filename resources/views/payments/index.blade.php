@@ -18,6 +18,7 @@
                         <th>Date</th>
                         <th>Invoice</th>
                         <th>Customer</th>
+                        <th>Type</th>
                         <th>Method</th>
                         <th>Reference</th>
                         <th>Amount</th>
@@ -37,12 +38,13 @@
                                 @endif
                             </td>
                             <td>{{ $payment->invoice?->customer?->displayName() ?: 'Walk-in' }}</td>
+                            <td>{{ \App\Models\Payment::TYPES[$payment->type ?? 'payment'] ?? 'Payment' }}</td>
                             <td>{{ \App\Models\Payment::METHODS[$payment->payment_method] ?? $payment->payment_method }}</td>
                             <td>{{ $payment->payment_reference ?: '—' }}</td>
-                            <td>{{ money($payment->amount) }}</td>
+                            <td>{{ money_profit($payment->signedAmount()) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="empty">No payments yet.</td></tr>
+                        <tr><td colspan="7" class="empty">No payments yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

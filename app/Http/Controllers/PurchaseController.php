@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\InsufficientStockException;
-use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -161,12 +160,6 @@ class PurchaseController extends Controller
         } catch (InsufficientStockException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }
-
-        AuditLog::record(
-            'purchase.updated',
-            $request->user()->name.' updated '.$purchase->purchase_number,
-            $purchase,
-        );
 
         return redirect()->route('purchases.show', $purchase)->with('success', 'Purchase updated and stock adjusted.');
     }
@@ -340,7 +333,6 @@ class PurchaseController extends Controller
         }
 
         $category = Category::query()->create(['name' => $name]);
-        AuditLog::record('category.created', 'Admin added category "'.$category->name.'" while recording a purchase', $category);
 
         return $category;
     }

@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SaleReturn;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -37,20 +38,23 @@ class ReportController extends Controller
             ->counted()
             ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId));
 
-        $posSales = (float) (clone $salesQuery)->sum('total');
+        $posSales = round((float) (clone $salesQuery)->sum('total') - $this->refundsBetween($start, $end, $cashierId), 2);
         $expenses = (float) Expense::query()->whereBetween('expense_date', [$start, $end])->sum('amount');
         $purchases = (float) Purchase::query()->whereBetween('purchase_date', [$start, $end])->sum('total');
         $posProfit = round($posSales - $purchases, 2);
-        $collected = (float) Payment::query()->whereBetween('payment_date', [$start, $end])->sum('amount');
+        $collected = (float) Payment::query()
+            ->whereBetween('payment_date', [$start, $end])
+            ->selectRaw("COALESCE(SUM(CASE WHEN COALESCE(type, 'payment') = 'refund' THEN -amount ELSE amount END), 0) as total")
+            ->value('total');
 
         $monthly = collect(range(1, 12))->map(function (int $month) use ($year, $cashierId) {
             $monthStart = now()->setYear($year)->month($month)->startOfMonth();
             $monthEnd = (clone $monthStart)->endOfMonth();
-            $monthSales = (float) Sale::query()
+            $monthSales = round((float) Sale::query()
                 ->whereBetween('sold_at', [$monthStart, $monthEnd])
                 ->counted()
                 ->when($cashierId, fn ($query) => $query->where('user_id', $cashierId))
-                ->sum('total');
+                ->sum('total') - $this->refundsBetween($monthStart, $monthEnd, $cashierId), 2);
             $monthPurchases = (float) Purchase::query()->whereBetween('purchase_date', [$monthStart, $monthEnd])->sum('total');
 
             return [
@@ -158,6 +162,15 @@ class ReportController extends Controller
             ->pluck('total', 'day')
             ->mapWithKeys(fn ($total, $day) => [substr((string) $day, 0, 10) => (float) $total]);
 
+        $refundsByDay = SaleReturn::query()
+            ->approved()
+            ->whereBetween('approved_at', [$start, $end])
+            ->when($cashierId, fn ($query) => $query->whereHas('sale', fn ($sale) => $sale->where('user_id', $cashierId)))
+            ->selectRaw('date(approved_at) as day, SUM(refund_amount) as total')
+            ->groupByRaw('date(approved_at)')
+            ->pluck('total', 'day')
+            ->mapWithKeys(fn ($total, $day) => [substr((string) $day, 0, 10) => (float) $total]);
+
         $purchasesByDay = Purchase::query()
             ->whereBetween('purchase_date', [$start, $end])
             ->selectRaw('date(purchase_date) as day, SUM(total) as total')
@@ -170,7 +183,7 @@ class ReportController extends Controller
 
         for ($date = $start->copy()->startOfDay(); $date->lte($end); $date->addDay()) {
             $key = $date->toDateString();
-            $sales = (float) ($salesByDay[$key] ?? 0);
+            $sales = round((float) ($salesByDay[$key] ?? 0) - (float) ($refundsByDay[$key] ?? 0), 2);
             $purchases = (float) ($purchasesByDay[$key] ?? 0);
 
             if ($skipEmpty && $sales == 0.0 && $purchases == 0.0) {
@@ -186,5 +199,14 @@ class ReportController extends Controller
         }
 
         return $rows->reverse()->values();
+    }
+
+    private function refundsBetween($start, $end, ?int $cashierId): float
+    {
+        return (float) SaleReturn::query()
+            ->approved()
+            ->whereBetween('approved_at', [$start, $end])
+            ->when($cashierId, fn ($query) => $query->whereHas('sale', fn ($sale) => $sale->where('user_id', $cashierId)))
+            ->sum('refund_amount');
     }
 }

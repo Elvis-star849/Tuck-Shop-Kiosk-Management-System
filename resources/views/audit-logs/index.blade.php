@@ -1,7 +1,7 @@
 <x-app-layout>
-    <x-slot name="header">Audit logs</x-slot>
-    <x-slot name="subtitle">Who did what, and when</x-slot>
-    <x-slot name="title">Audit logs</x-slot>
+    <x-slot name="header">Activity log</x-slot>
+    <x-slot name="subtitle">Every change in this shop. Visible to admins only.</x-slot>
+    <x-slot name="title">Activity log</x-slot>
     <x-slot name="actions">
         <form method="GET" class="filters">
             <input class="field" type="search" name="search" value="{{ request('search') }}" placeholder="Search actions">
@@ -15,9 +15,11 @@
                 <thead>
                     <tr>
                         <th>When</th>
-                        <th>User</th>
+                        <th>Who</th>
                         <th>Action</th>
-                        <th>Description</th>
+                        <th>Change</th>
+                        <th>From</th>
+                        <th>To</th>
                         <th>IP</th>
                     </tr>
                 </thead>
@@ -27,11 +29,13 @@
                             <td>{{ $log->created_at->format('d M Y H:i') }}</td>
                             <td>{{ $log->user?->name ?: 'System' }}</td>
                             <td>{{ $log->action ?: $log->field }}</td>
-                            <td>{{ $log->description ?: (($log->field ?? 'field').' '.$log->old_value.' → '.$log->new_value) }}</td>
+                            <td>{{ $log->description }}</td>
+                            <td>{{ $log->old_value ?: '—' }}</td>
+                            <td>{{ $log->new_value ?: '—' }}</td>
                             <td>{{ $log->ip_address ?: '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="empty">No audit events yet.</td></tr>
+                        <tr><td colspan="7" class="empty">No activity recorded yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

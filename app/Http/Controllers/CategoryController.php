@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,7 +25,6 @@ class CategoryController extends Controller
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:categories,name']]);
         $category = Category::query()->create($data);
-        AuditLog::record('category.created', 'Admin added category "'.$category->name.'"', $category);
 
         return redirect()->route('categories.index')->with('success', 'Category saved.');
     }
@@ -44,9 +42,7 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category): RedirectResponse
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:categories,name,'.$category->id]]);
-        $old = $category->name;
         $category->update($data);
-        AuditLog::record('category.updated', 'Category renamed from "'.$old.'" to "'.$category->name.'"', $category, 'name', $old, $category->name);
 
         return redirect()->route('categories.index')->with('success', 'Category updated.');
     }
@@ -57,9 +53,7 @@ class CategoryController extends Controller
             return back()->with('error', 'This category is in use and cannot be deleted.');
         }
 
-        $name = $category->name;
         $category->delete();
-        AuditLog::record('category.deleted', 'Admin deleted category "'.$name.'"');
 
         return redirect()->route('categories.index')->with('success', 'Category deleted.');
     }

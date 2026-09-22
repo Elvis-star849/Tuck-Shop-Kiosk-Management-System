@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">Stock management</x-slot>
-    <x-slot name="subtitle">Every in, out, who, and when</x-slot>
+    <x-slot name="subtitle">Purchases, sales, write-offs, and adjustments</x-slot>
     <x-slot name="title">Stock history</x-slot>
     <x-slot name="actions">
         <form method="GET" class="filters">

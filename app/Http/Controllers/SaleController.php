@@ -39,7 +39,7 @@ class SaleController extends Controller
     public function show(Request $request, Sale $sale): View
     {
         $this->authorizeSale($request, $sale);
-        $sale->load(['items.product', 'user', 'payments', 'cancelledBy', 'gatewayTransactions']);
+        $sale->load(['items.product', 'user', 'payments', 'cancelledBy', 'gatewayTransactions', 'returns.items.saleItem']);
 
         return view('sales.show', compact('sale'));
     }
@@ -97,6 +97,10 @@ class SaleController extends Controller
             return back()->with('error', 'Only a completed sale can be cancelled.');
         }
 
+        if ($sale->hasPendingReturn()) {
+            return back()->with('error', 'Resolve the pending return on this receipt before cancelling the sale.');
+        }
+
         $data = $request->validate([
             'cancel_reason' => ['required', 'string', 'max:500'],
         ]);
@@ -122,6 +126,10 @@ class SaleController extends Controller
 
         if (! in_array($sale->status, ['completed', 'cancel_requested'], true)) {
             return back()->with('error', 'This sale cannot be cancelled.');
+        }
+
+        if ($sale->hasPendingReturn()) {
+            return back()->with('error', 'Resolve the pending return on this receipt before cancelling the sale.');
         }
 
         $inventory->restoreForSale($sale);

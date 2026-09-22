@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GatewayTransaction extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, RecordsChanges;
     public const STATUSES = ['pending', 'paid', 'cancelled', 'failed'];
 
     protected $fillable = [

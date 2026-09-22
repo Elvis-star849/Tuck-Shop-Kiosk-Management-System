@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Shop extends Model
 {
     /** @use HasFactory<\Database\Factories\ShopFactory> */
-    use HasFactory;
+    use HasFactory, RecordsChanges;
 
     protected $fillable = [
         'name',

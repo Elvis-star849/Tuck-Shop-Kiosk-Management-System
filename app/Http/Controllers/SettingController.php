@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditLog;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +22,7 @@ class SettingController extends Controller
                 'currency_symbol' => Setting::get('company.currency_symbol', config('company.currency_symbol')),
                 'default_tax_rate' => Setting::get('company.default_tax_rate', config('company.default_tax_rate')),
                 'receipt_footer' => Setting::get('company.receipt_footer', 'Thank you'),
+                'cashier_max' => Setting::get('refunds.cashier_max', ''),
             ],
         ]);
     }
@@ -39,20 +39,24 @@ class SettingController extends Controller
             'currency_symbol' => ['required', 'string', 'max:8'],
             'default_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'receipt_footer' => ['nullable', 'string', 'max:200'],
+            'cashier_max' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $cashierMax = $data['cashier_max'] ?? null;
+        unset($data['cashier_max']);
 
         foreach ($data as $key => $value) {
             Setting::put('company.'.$key, $value);
             config(['company.'.$key => $value]);
         }
 
+        Setting::put('refunds.cashier_max', $cashierMax === null || $cashierMax === '' ? null : $cashierMax);
+
         $request->user()->shop?->update([
             'name' => $data['name'],
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
         ]);
-
-        AuditLog::record('settings.updated', 'Admin updated business and receipt settings');
 
         return back()->with('success', 'Settings saved.');
     }

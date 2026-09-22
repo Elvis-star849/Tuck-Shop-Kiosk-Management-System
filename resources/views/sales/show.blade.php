@@ -12,6 +12,9 @@
         @else
             <a class="btn btn-primary" href="{{ route('sales.pdf', $sale) }}">Download receipt</a>
             <a class="btn btn-ghost" href="{{ route('sales.receipt', $sale) }}">Print receipt</a>
+            @if ($sale->isCompleted())
+                <a class="btn btn-outline" href="{{ route('returns.sale', ['number' => $sale->sale_number]) }}">Return items</a>
+            @endif
         @endif
         <a class="btn btn-ghost" href="{{ route('sales.index') }}">{{ auth()->user()->isAdmin() ? 'All sales' : 'My sales' }}</a>
     </x-slot>
@@ -24,6 +27,7 @@
                         <tr>
                             <th>Item</th>
                             <th>Qty</th>
+                            <th>Returned</th>
                             <th>Price</th>
                             <th>Total</th>
                         </tr>
@@ -33,6 +37,7 @@
                             <tr>
                                 <td>{{ $item->description }}</td>
                                 <td>{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') }}</td>
+                                <td>{{ rtrim(rtrim(number_format($item->quantity_returned, 2), '0'), '.') }}</td>
                                 <td>{{ money($item->unit_price) }}</td>
                                 <td>{{ money($item->line_total) }}</td>
                             </tr>
@@ -52,6 +57,9 @@
             @endif
             <p class="muted" style="margin-top:12px;">{{ $sale->isPendingPayment() ? 'Payment method' : 'Paid by' }} {{ \App\Models\Payment::METHODS[$sale->payment_method] ?? $sale->payment_method }}</p>
             <p style="margin-top:8px;"><x-status-badge :status="$sale->status" /></p>
+            @if ((float) $sale->approvedRefundTotal() > 0)
+                <div class="totals-row"><span>Refunded</span><span>{{ money($sale->approvedRefundTotal()) }}</span></div>
+            @endif
         </div>
     </div>
 
@@ -101,6 +109,38 @@
                                         <a class="btn btn-ghost" href="{{ route('payments.ecocash.show', $transaction) }}">Open</a>
                                     @endif
                                 </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    @if ($sale->returns->isNotEmpty())
+        <div class="card" style="margin-top:18px;">
+            <div class="card-pad"><h2 class="card-title">Returns</h2></div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Return</th>
+                            <th>Items</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>When</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($sale->returns->sortByDesc('id') as $return)
+                            <tr>
+                                <td>{{ $return->return_number }}</td>
+                                <td>
+                                    {{ $return->items->map(fn ($line) => rtrim(rtrim(number_format($line->quantity, 2), '0'), '.').'× '.$line->saleItem?->description)->implode(', ') }}
+                                </td>
+                                <td>{{ money($return->refund_amount) }}</td>
+                                <td><x-status-badge :status="$return->status" /></td>
+                                <td>{{ $return->created_at->format('d M Y H:i') }}</td>
                             </tr>
                         @endforeach
                     </tbody>

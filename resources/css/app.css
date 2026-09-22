@@ -687,6 +687,11 @@ a.stat-card-link:hover {
 .badge-completed { background: #dffaf3; color: #0f766e; }
 .badge-pending_payment { background: #fff6db; color: #b45309; }
 .badge-cancel_requested { background: #fff6db; color: #b45309; }
+.badge-refunded { background: #ecebff; color: #4338ca; }
+.badge-requested { background: #fff6db; color: #b45309; }
+.badge-approved { background: #dffaf3; color: #0f766e; }
+.badge-rejected { background: #ececec; color: #6b7280; }
+.badge-refund { background: #ffe4ef; color: #be185d; }
 
 .form-grid {
     display: grid;

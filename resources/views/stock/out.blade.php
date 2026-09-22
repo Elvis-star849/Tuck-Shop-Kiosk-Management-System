@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">Stock management</x-slot>
-    <x-slot name="subtitle">Damaged, expired, lost, or adjustment</x-slot>
-    <x-slot name="title">Stock out</x-slot>
+    <x-slot name="subtitle">Write off damaged, expired, or lost goods</x-slot>
+    <x-slot name="title">Write-off</x-slot>
 
     @include('stock._tabs')
 
@@ -20,7 +20,7 @@
                 </select>
             </div>
             <div>
-                <label class="field-label" for="quantity">Quantity out</label>
+                <label class="field-label" for="quantity">Quantity</label>
                 <input class="field" id="quantity" type="number" step="0.01" min="0.01" name="quantity" value="{{ old('quantity') }}" required>
             </div>
             <div>
@@ -37,7 +37,7 @@
             </div>
         </div>
         <div class="actions" style="margin-top:18px;">
-            <button class="btn btn-primary" type="submit">Remove stock</button>
+            <button class="btn btn-primary" type="submit">Write off</button>
             <a class="btn btn-ghost" href="{{ route('stock.manage') }}">Cancel</a>
         </div>
     </form>

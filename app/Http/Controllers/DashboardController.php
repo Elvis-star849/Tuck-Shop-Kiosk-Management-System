@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -9,6 +10,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SaleReturn;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -26,6 +28,11 @@ class DashboardController extends Controller
             ->when(! $admin, fn ($query) => $query->where('user_id', $request->user()->id));
 
         $todayRevenue = (float) (clone $todaySales)->sum('total');
+        $todayRefunds = (float) SaleReturn::query()
+            ->approved()
+            ->whereBetween('approved_at', [$todayStart, $todayEnd])
+            ->sum('refund_amount');
+        $todayRevenue = round($todayRevenue - $todayRefunds, 2);
         $todayCount = (clone $todaySales)->count();
         $todayPurchases = $admin ? (float) Purchase::query()->whereDate('purchase_date', today())->sum('total') : 0;
         $todayProfit = $admin ? round($todayRevenue - $todayPurchases, 2) : 0;
@@ -43,7 +50,7 @@ class DashboardController extends Controller
         $paymentSplit = Payment::query()
             ->whereDate('payment_date', today())
             ->when(! $admin, fn ($query) => $query->whereHas('sale', fn ($sale) => $sale->where('user_id', $request->user()->id)))
-            ->selectRaw('payment_method, SUM(amount) as total')
+            ->selectRaw("payment_method, SUM(CASE WHEN COALESCE(type, 'payment') = 'refund' THEN -amount ELSE amount END) as total")
             ->groupBy('payment_method')
             ->pluck('total', 'payment_method');
 
@@ -68,6 +75,7 @@ class DashboardController extends Controller
             ->get();
 
         $pendingCancels = $admin ? Sale::query()->where('status', 'cancel_requested')->count() : 0;
+        $pendingReturns = $admin ? SaleReturn::query()->requested()->count() : 0;
 
         return view('dashboard', [
             'isAdmin' => $admin,
@@ -87,6 +95,10 @@ class DashboardController extends Controller
             'recentSales' => $recentSales,
             'overdueCount' => Invoice::query()->where('status', 'overdue')->count(),
             'pendingCancels' => $pendingCancels,
+            'pendingReturns' => $pendingReturns,
+            'recentChanges' => $admin
+                ? AuditLog::query()->with('user')->latest()->limit(8)->get()
+                : collect(),
         ]);
     }
 }

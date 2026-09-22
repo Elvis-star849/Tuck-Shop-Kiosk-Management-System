@@ -18,6 +18,7 @@
                             <th>Product</th>
                             <th>Expiry</th>
                             <th>Stock</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -26,9 +27,19 @@
                                 <td><a href="{{ route('products.show', $product) }}" style="color:var(--purple);font-weight:600;">{{ $product->name }}</a></td>
                                 <td>{{ $product->expiry_date->format('d M Y') }}</td>
                                 <td>{{ rtrim(rtrim(number_format($product->quantity, 2), '0'), '.') }} {{ $product->unit }}</td>
+                                <td>
+                                    @if ((float) $product->quantity > 0)
+                                        <form method="POST" action="{{ route('stock.write-off', $product) }}" onsubmit="return confirm('Write off all remaining {{ $product->name }} as expired?');">
+                                            @csrf
+                                            <button class="btn btn-outline" type="submit">Write off</button>
+                                        </form>
+                                    @else
+                                        <span class="muted">No stock</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="empty">No expired products.</td></tr>
+                            <tr><td colspan="4" class="empty">No expired products.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

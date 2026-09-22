@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToShop;
+use App\Models\Concerns\RecordsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockMovement extends Model
 {
-    use BelongsToShop;
+    use BelongsToShop, RecordsChanges;
     public const TYPES = [
         'stock_in' => 'Stock In',
         'sale' => 'Sale',
@@ -24,9 +25,6 @@ class StockMovement extends Model
         'damaged' => 'Damaged',
         'expired' => 'Expired',
         'lost' => 'Lost',
-        'personal_use' => 'Personal Use',
-        'adjustment' => 'Stock Adjustment',
-        'return_supplier' => 'Return to Supplier',
     ];
 
     protected $fillable = [

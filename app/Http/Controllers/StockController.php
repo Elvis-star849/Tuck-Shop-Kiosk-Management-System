@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Exceptions\InsufficientStockException;
 use App\Models\Product;
 use App\Models\StockMovement;
-use App\Models\Supplier;
 use App\Services\InventoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,7 +42,6 @@ class StockController extends Controller
     {
         return view('stock.in', [
             'products' => Product::query()->active()->orderBy('name')->get(),
-            'suppliers' => Supplier::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -53,7 +51,7 @@ class StockController extends Controller
             'product_id' => ['required', 'exists:products,id'],
             'quantity' => ['required', 'numeric', 'min:0.01'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
-            'reason' => ['nullable', 'string', 'max:120'],
+            'reason' => ['required', 'in:Opening Stock'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -66,7 +64,7 @@ class StockController extends Controller
             $product,
             'stock_in',
             (float) $data['quantity'],
-            $data['reason'] ?: 'Supplier Purchase',
+            $data['reason'],
             $data['notes'] ?? null,
         );
 
@@ -92,18 +90,10 @@ class StockController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $type = match ($data['reason']) {
-            'damaged' => 'damaged',
-            'expired' => 'expired',
-            'lost' => 'lost',
-            'return_supplier' => 'adjustment',
-            default => 'adjustment',
-        };
-
         try {
             $movement = $inventory->apply(
                 Product::query()->findOrFail($data['product_id']),
-                $type,
+                $data['reason'],
                 (float) $data['quantity'],
                 StockMovement::OUT_REASONS[$data['reason']],
                 $data['notes'] ?? null,
@@ -114,7 +104,36 @@ class StockController extends Controller
 
         return redirect()->route('stock.history')->with(
             'success',
-            'Removed '.$data['quantity'].'. Old stock '.$movement->quantity_before.', new stock '.$movement->quantity_after.'.'
+            'Wrote off '.$data['quantity'].' as '.strtolower(StockMovement::OUT_REASONS[$data['reason']]).'. Old stock '.$movement->quantity_before.', new stock '.$movement->quantity_after.'.'
+        );
+    }
+
+    public function writeOffExpired(Product $product, InventoryService $inventory): RedirectResponse
+    {
+        if (! $product->isExpired()) {
+            return back()->with('error', $product->name.' is not expired yet.');
+        }
+
+        $qty = (float) $product->quantity;
+        if ($qty <= 0) {
+            return back()->with('error', $product->name.' already has no stock to write off.');
+        }
+
+        try {
+            $movement = $inventory->apply(
+                $product,
+                'expired',
+                $qty,
+                'Expired',
+                'Written off from expiry tab',
+            );
+        } catch (InsufficientStockException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('stock.expired')->with(
+            'success',
+            'Wrote off '.$qty.' '.$product->name.'. Stock is now '.$movement->quantity_after.'.'
         );
     }
 
@@ -146,15 +165,6 @@ class StockController extends Controller
         } catch (InsufficientStockException|\InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }
-
-        \App\Models\AuditLog::record(
-            'stock.adjusted',
-            'Admin adjusted '.$product->name.' stock from '.$movement->quantity_before.' to '.$movement->quantity_after,
-            $product,
-            'quantity',
-            $movement->quantity_before,
-            $movement->quantity_after,
-        );
 
         return redirect()->route('stock.history')->with(
             'success',
