@@ -11,6 +11,8 @@
             <a class="btn btn-ghost" href="{{ route('audit-logs.index') }}">Activity</a>
         @endif
     </x-slot>
+    
+{{-- hhgdgdhhdghdghdwghw --}}
 
     @if ($isAdmin && ($pendingCancels || $pendingReturns))
         <div class="flash flash-error">
